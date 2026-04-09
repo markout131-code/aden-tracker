@@ -132,7 +132,7 @@
         <div class="progress-bar">
             <div class="progress-fill"></div>
         </div>
-        <div class="version">v1.0.0</div>
+        <div class="version" id="appVersion">v1.0.0</div>
     </div>
     
     <script>
@@ -143,6 +143,18 @@
             dotsCount = (dotsCount + 1) % 4;
             dotsElement.textContent = '.'.repeat(dotsCount);
         }, 500);
+        
+        // Πάρε την έκδοση από το URL (το στέλνει το main.js)
+        const urlParams = new URLSearchParams(window.location.search);
+        const version = urlParams.get('version');
+        
+        // Αν υπάρχει version στο URL, ενημέρωσε το version element
+        if (version) {
+            const versionElement = document.getElementById('appVersion');
+            if (versionElement) {
+                versionElement.textContent = `v${version}`;
+            }
+        }
     </script>
 </body>
 </html>
