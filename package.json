@@ -1,0 +1,43 @@
+{
+  "name": "aden-tracker",
+  "version": "1.0.0",
+  "description": "Lineage 2 Event Tracker",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "build": {
+    "appId": "com.aden.tracker",
+    "productName": "Aden Tracker",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Aden Tracker"
+    },
+    "portable": {
+      "artifactName": "AdenTrackerPortable.exe"
+    }
+  },
+  "dependencies": {
+    "firebase": "^12.11.0"
+  }
+}

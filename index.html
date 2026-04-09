@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: rgba(0,0,0,0.75); --bg-secondary: rgba(0,0,0,0.6);
+            --text-primary: #fff; --text-secondary: #ccc;
+            --border-color: rgba(255,215,0,0.2); --event-bg: rgba(255,255,255,0.05);
+            --event-hover: rgba(255,215,0,0.1); --countdown-bg: rgba(255,215,0,0.15);
+            --countdown-text: #ffd700; --gold-text: #ffd700;
+            --section-title-color: rgba(255,215,0,0.6);
+            --active-title-color: #ffd700; --filter-btn-color: rgba(255,255,255,0.8);
+            --filter-btn-bg: rgba(255,215,0,0.2); --title-gradient-start: #ffd700;
+            --title-gradient-end: #ffb347; --active-box-bg: linear-gradient(135deg,rgba(255,215,0,0.12) 0%,rgba(255,107,53,0.08) 100%);
+            --active-box-border: rgba(255,215,0,0.3); --live-badge-bg: rgba(255,51,51,0.2);
+            --live-badge-color: #ff4444; --progress-label-color: rgba(255,255,255,0.5);
+            --timer-gradient: linear-gradient(135deg,#fff 0%,#ffd700 100%);
+            --next-event-bg: rgba(255,255,255,0.05); --next-event-border: rgba(255,255,255,0.08);
+            --ping-low: #4caf50; --ping-mid: #ff9800; --ping-high: #ff4444;
+        }
+        body.light-mode {
+            --bg-primary: rgba(245,245,250,0.96); --bg-secondary: rgba(255,255,255,0.95);
+            --text-primary: #1a1a2e; --text-secondary: #2d2d3a; --border-color: rgba(0,0,0,0.12);
+            --event-bg: rgba(0,0,0,0.04); --event-hover: rgba(0,0,0,0.08);
+            --countdown-bg: rgba(0,0,0,0.08); --countdown-text: #1a1a2e; --gold-text: #1a1a2e;
+            --section-title-color: #1a1a2e; --active-title-color: #1a1a2e;
+            --filter-btn-color: #1a1a2e; --filter-btn-bg: rgba(0,0,0,0.08);
+            --title-gradient-start: #1a1a2e; --title-gradient-end: #2d2d3a;
+            --active-box-bg: linear-gradient(135deg,#e8e8ff 0%,#d0d0ff 100%); --active-box-border: #4a4aff;
+            --timer-gradient: linear-gradient(135deg,#1a1a2e 0%,#4a4aff 100%);
+            --live-badge-bg: rgba(255,51,51,0.15); --live-badge-color: #cc0000;
+            --progress-label-color: rgba(0,0,0,0.6); --next-event-bg: rgba(0,0,0,0.04);
+            --next-event-border: rgba(0,0,0,0.1);
+        }
+        body.light-mode .title-bar { background: rgba(0,0,0,0.04); border-bottom: 1px solid rgba(0,0,0,0.1); }
+        body { background: transparent !important; font-family: 'Inter', sans-serif; overflow: hidden; user-select: none; }
+        
+        .main-container { 
+            background: var(--bg-primary); 
+            backdrop-filter: blur(16px); 
+            border-radius: 16px; 
+            border: 1px solid var(--border-color); 
+            overflow: hidden; 
+            box-shadow: none;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .title-bar { 
+            height: 44px; 
+            background: rgba(255,215,0,0.1); 
+            border-bottom: 1px solid rgba(255,215,0,0.15); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 12px; 
+            -webkit-app-region: drag; 
+            cursor: move;
+            flex-shrink: 0;
+        }
+        .title-text { font-size: 14px; font-weight: 800; letter-spacing: 2px; background: linear-gradient(135deg, var(--title-gradient-start) 0%, var(--title-gradient-end) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; text-transform: uppercase; }
+        .title-buttons { display: flex; gap: 8px; -webkit-app-region: no-drag; }
+        .settings-btn, .close-btn { width: 24px; height: 24px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; cursor: pointer; transition: all 0.2s; }
+        .settings-btn:hover, .close-btn:hover { background: rgba(255,215,0,0.4); color: #ffd700; }
+        body.light-mode .settings-btn:hover, body.light-mode .close-btn:hover { background: rgba(0,0,0,0.15); color: #4a4aff; }
+        
+        .scrollable-content { 
+            padding: 10px;
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+        
+        .scrollable-content::-webkit-scrollbar { width: 4px; }
+        .scrollable-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+        .scrollable-content::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.5); border-radius: 4px; }
+        body.light-mode .scrollable-content::-webkit-scrollbar-thumb { background: #4a4aff; }
+        
+        .bottom-bar { 
+			flex-shrink: 0;
+			background: var(--bg-secondary);
+			border-top: 1px solid var(--border-color);
+			padding: 8px 10px;
+			text-align: center;
+			min-height: 55px;
+        }
+        .bottom-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 9px;
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+        .ping-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0,0,0,0.2);
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        .ping-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .ping-dot.low { background-color: #4caf50; box-shadow: 0 0 4px #4caf50; }
+        .ping-dot.mid { background-color: #ff9800; box-shadow: 0 0 4px #ff9800; }
+        .ping-dot.high { background-color: #ff4444; box-shadow: 0 0 4px #ff4444; }
+        .online-count { 
+            background: rgba(76, 175, 80, 0.3); 
+            padding: 2px 6px; 
+            border-radius: 10px; 
+            color: #4caf50;
+            display: inline-block;
+        }
+        /* ΤΟ STYLE ΤΗΣ ΕΚΔΟΣΗΣ ΑΠΟ ΤΟ API (σαν badge) */
+        .version-badge-style {
+            background: rgba(255,215,0,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: #ffd700;
+            font-weight: 600;
+            font-size: 9px;
+            display: inline-block;
+        }
+        body.light-mode .version-badge-style {
+            background: rgba(0,0,0,0.1);
+            color: #1a1a2e;
+        }
+        
+        .settings-panel { background: var(--bg-secondary); border-radius: 12px; padding: 10px; margin-bottom: 10px; display: none; border: 1px solid var(--border-color); }
+        .settings-panel.show { display: block; }
+        .setting-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+        .setting-item label { cursor: pointer; }
+        .filter-buttons { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+        .filter-btn { background: var(--filter-btn-bg); border: none; border-radius: 20px; padding: 3px 8px; font-size: 10px; cursor: pointer; color: var(--filter-btn-color); transition: all 0.2s; }
+        .filter-btn.active { background: #ffd700; color: #000; }
+        body.light-mode .filter-btn.active { background: #4a4aff; color: #fff; }
+        
+        .live-events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .active-box { 
+            background: var(--active-box-bg); 
+            border-radius: 12px; 
+            padding: 10px; 
+            position: relative; 
+            border: 1px solid var(--active-box-border); 
+            overflow: hidden;
+            min-width: 0;
+        }
+        .active-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #ffd700, #ff6b35, #ffd700); animation: shimmer 2s infinite; }
+        body.light-mode .active-box::before { background: linear-gradient(90deg, #4a4aff, #8a2be2, #4a4aff); }
+        @keyframes shimmer { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .active-title { font-size: 10px; font-weight: 700; color: var(--active-title-color); text-transform: uppercase; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+        .live-badge { display: inline-flex; align-items: center; gap: 3px; background: var(--live-badge-bg); padding: 2px 5px; border-radius: 20px; font-size: 8px; color: var(--live-badge-color); }
+        .live-dot { width: 5px; height: 5px; background: #ff4444; border-radius: 50%; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.2); } }
+        .active-timer { font-size: 24px; font-weight: 800; background: var(--timer-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; margin: 3px 0; line-height: 1; font-feature-settings: 'tnum'; font-variant-numeric: tabular-nums; }
+        .progress-section { margin-top: 6px; }
+        .progress-labels { display: flex; justify-content: space-between; font-size: 7px; color: var(--progress-label-color); margin-bottom: 2px; }
+        .progress-container { width: 100%; height: 3px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
+        body.light-mode .progress-container { background: rgba(0,0,0,0.1); }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #ffd700, #ff6b35); border-radius: 10px; transition: width 0.5s ease; }
+        body.light-mode .progress-bar { background: linear-gradient(90deg, #4a4aff, #8a2be2); }
+        
+        .next-event { background: var(--next-event-bg); border-radius: 10px; padding: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--next-event-border); }
+        .next-event:hover { background: var(--event-hover); }
+        .next-label { font-size: 8px; font-weight: 600; color: var(--next-label-color); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+
+/* ΜΟΝΟ στο dark mode - η λέξη NEXT EVENT γίνεται λευκή */
+body:not(.light-mode) .next-label { 
+    color: #ffd700 !important;
+}
+        .next-name { font-size: 11px; font-weight: 700; color: var(--text-primary); }
+        .next-time { font-size: 13px; font-weight: 800; background: linear-gradient(135deg, #ffd700, #ffb347); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        body.light-mode .next-time { background: linear-gradient(135deg, #1a1a2e, #4a4aff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        
+        .section-title { font-size: 9px; font-weight: 700; letter-spacing: 1px; color: var(--section-title-color); text-transform: uppercase; margin: 8px 0 5px 0; display: flex; align-items: center; gap: 6px; }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255,215,0,0.3), transparent); }
+        body.light-mode .section-title::after { background: linear-gradient(90deg, rgba(0,0,0,0.2), transparent); }
+        
+        .events-grid { 
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .event-item { background: var(--event-bg); padding: 6px 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid; transition: all 0.2s; }
+        .event-item:hover { background: var(--event-hover); }
+        .event-name { font-size: 11px; font-weight: 600; color: var(--text-primary); }
+        .event-countdown { font-size: 10px; font-weight: 700; font-feature-settings: 'tnum'; font-variant-numeric: tabular-nums; background: var(--countdown-bg); padding: 2px 5px; border-radius: 20px; color: var(--countdown-text); }
+        
+        .empty-state { text-align: center; padding: 15px; color: var(--text-secondary); font-size: 10px; opacity: 0.5; }
+        
+        .license-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .license-box { background: var(--bg-secondary); border-radius: 20px; padding: 24px; width: 280px; text-align: center; border: 1px solid var(--border-color); position: relative; }
+        .license-box h3 { color: var(--text-primary); margin-bottom: 16px; font-size: 18px; }
+        .license-box p { color: var(--text-secondary); font-size: 12px; margin-bottom: 16px; }
+        .license-box input { width: 100%; padding: 12px; background: var(--event-bg); border: 1px solid var(--border-color); border-radius: 10px; color: var(--text-primary); margin-bottom: 12px; font-size: 12px; text-align: center; letter-spacing: 1px; }
+        .license-box button { width: 100%; padding: 10px; background: linear-gradient(135deg, #ffd700, #ffb347); border: none; border-radius: 10px; color: #000; font-weight: bold; cursor: pointer; margin-bottom: 12px; }
+        body.light-mode .license-box button { background: linear-gradient(135deg, #1a1a2e, #4a4aff); color: #fff; }
+        .buy-link { color: var(--gold-text); font-size: 12px; text-decoration: none; display: inline-block; margin-top: 8px; }
+        .buy-link:hover { text-decoration: underline; }
+        .error-message { color: #ff4444; font-size: 11px; margin-top: 8px; }
+        .license-close { position: absolute; top: 12px; right: 12px; width: 24px; height: 24px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 16px; cursor: pointer; transition: all 0.2s; }
+        .license-close:hover { background: rgba(255,215,0,0.4); color: #ffd700; }
+    </style>
+</head>
+<body>
+<div class="main-container" id="mainContainer">
+    <div class="title-bar">
+        <div class="title-text">⚔️ ADEN TRACKER ⚔️</div>
+        <div class="title-buttons">
+            <div class="settings-btn" id="settingsBtn">⚙️</div>
+            <div class="close-btn" id="closeBtn">✕</div>
+        </div>
+    </div>
+    
+    <div class="scrollable-content" id="mainContent" style="display: none;">
+        <div class="settings-panel" id="settingsPanel">
+            <div class="setting-item"><span>🔔 Notifications (5 min before)</span><label><input type="checkbox" id="notificationsToggle"></label></div>
+            <div class="setting-item"><span>🔊 Sound alerts</span><label><input type="checkbox" id="soundToggle"></label></div>
+            <div class="setting-item"><span>🌙 Dark/Light mode</span><label><input type="checkbox" id="darkModeToggle"></label></div>
+            <div class="setting-item"><span>🎨 Filter events:</span></div>
+            <div class="filter-buttons" id="filterButtons"></div>
+        </div>
+        <div id="active-area"></div>
+        <div id="upcoming-section"></div>
+    </div>
+    
+    <!-- ΚΑΤΩ ΜΠΑΡΑ - ΜΙΑ ΦΟΡΑ Η ΕΚΔΟΣΗ (από API) -->
+    <div class="bottom-bar">
+        <div class="bottom-info">
+            <span id="tz-text">🕐 Loading...</span>
+            <span class="ping-badge" id="pingBadge">
+                <span class="ping-dot" id="pingDot"></span>
+                <span id="pingText">-- ms</span>
+            </span>
+            <span class="online-count" id="onlineCount">👥 0 online</span>
+            <span class="version-badge-style" id="versionBadge">📌 v1.0.0</span>
+        </div>
+    </div>
+</div>
+<script>
+const { ipcRenderer } = require('electron');
+const BUY_URL = 'https://adentracker.lemonsqueezy.com/checkout/buy/1e77753d-1848-45a2-aa3a-4b8278e036fd';
+const EVENTS_URL = 'https://gist.githubusercontent.com/markout131-code/4d6b9e9a89120715eadaaf69fdcc986e/raw/events.json';
+
+let isLicensed = false;
+let licenseOverlay = null;
+let settings = { notifications: true, soundAlerts: true, darkMode: false, activeFilters: [] };
+let eventsList = [];
+let notifiedEvents = new Set();
+let updateInterval = null, refreshInterval = null, pingInterval = null;
+
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const closeBtn = document.getElementById('closeBtn');
+const mainContent = document.getElementById('mainContent');
+
+function loadSettings() {
+    const saved = localStorage.getItem('adenTrackerSettings');
+    if (saved) { try { settings = { ...settings, ...JSON.parse(saved) }; } catch(e) {} }
+    applySettings();
+}
+function saveSettings() { localStorage.setItem('adenTrackerSettings', JSON.stringify(settings)); applySettings(); }
+function applySettings() {
+    if (document.getElementById('notificationsToggle')) {
+        document.getElementById('notificationsToggle').checked = settings.notifications;
+        document.getElementById('soundToggle').checked = settings.soundAlerts;
+        document.getElementById('darkModeToggle').checked = settings.darkMode;
+    }
+    if (settings.darkMode) document.body.classList.remove('light-mode');
+    else document.body.classList.add('light-mode');
+}
+
+// Measure ping to Google DNS
+async function measurePing() {
+    const start = Date.now();
+    try {
+        await fetch('https://8.8.8.8:443', { mode: 'no-cors', cache: 'no-store' });
+        const ping = Date.now() - start;
+        updatePingDisplay(ping);
+    } catch (e) {
+        try {
+            await fetch('https://cloudflare.com/cdn-cgi/trace', { cache: 'no-store', mode: 'no-cors' });
+            const ping = Date.now() - start;
+            updatePingDisplay(ping);
+        } catch (e2) {
+            updatePingDisplay(null);
+        }
+    }
+}
+
+function updatePingDisplay(ping) {
+    const pingText = document.getElementById('pingText');
+    const pingDot = document.getElementById('pingDot');
+    if (!pingText || !pingDot) return;
+    
+    if (ping === null) {
+        pingText.textContent = '-- ms';
+        pingDot.className = 'ping-dot high';
+        return;
+    }
+    
+    pingText.textContent = `${ping} ms`;
+    if (ping < 50) {
+        pingDot.className = 'ping-dot low';
+    } else if (ping < 150) {
+        pingDot.className = 'ping-dot mid';
+    } else {
+        pingDot.className = 'ping-dot high';
+    }
+}
+
+// Drag functionality
+let isDragging = false;
+const titleBar = document.querySelector('.title-bar');
+titleBar.addEventListener('mousedown', (e) => {
+    if (e.button === 0 && !e.target.classList.contains('settings-btn') && !e.target.classList.contains('close-btn')) {
+        isDragging = true;
+        ipcRenderer.send('start-drag', e.screenX, e.screenY);
+        e.preventDefault();
+    }
+});
+window.addEventListener('mousemove', (e) => { if (isDragging) ipcRenderer.send('during-drag', e.screenX, e.screenY); });
+window.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; ipcRenderer.send('end-drag'); } });
+closeBtn.addEventListener('click', () => window.close());
+settingsBtn.addEventListener('click', () => { settingsPanel.classList.toggle('show'); });
+
+// Update online count
+function updateOnlineCountDisplay(count) {
+    const onlineSpan = document.getElementById('onlineCount');
+    if (onlineSpan) {
+        onlineSpan.innerHTML = `👥 ${count} online`;
+    }
+}
+
+ipcRenderer.on('update-online-count', (event, count) => {
+    updateOnlineCountDisplay(count);
+});
+
+function showLicenseScreen() {
+    if (licenseOverlay) return;
+    licenseOverlay = document.createElement('div');
+    licenseOverlay.className = 'license-overlay';
+    licenseOverlay.innerHTML = `<div class="license-box"><div class="license-close" id="license-close">✕</div><h3>🔐 ADEN TRACKER</h3><p>Enter your license key to continue<br><span style="font-size:11px;"></span></p><input type="text" id="license-key" placeholder="XXXX-XXXX-XXXX-XXXX"><button id="activate-btn">Activate</button><div><a href="#" id="buy-link" class="buy-link">💰 Buy license (1.99€/month)</a></div><div id="license-error" class="error-message"></div></div>`;
+    document.body.appendChild(licenseOverlay);
+    
+    document.getElementById('license-close').addEventListener('click', () => { window.close(); });
+    
+    document.getElementById('activate-btn').addEventListener('click', async () => {
+        const key = document.getElementById('license-key').value.trim();
+        if (!key) { document.getElementById('license-error').textContent = 'Please enter a license key'; return; }
+        document.getElementById('activate-btn').textContent = 'Verifying...';
+        document.getElementById('activate-btn').disabled = true;
+        const result = await ipcRenderer.invoke('activate-license', key);
+        if (result.success) {
+            isLicensed = true;
+            licenseOverlay.remove();
+            licenseOverlay = null;
+            mainContent.style.display = 'block';
+            loadEvents(); loadSettings(); update();
+            if (updateInterval) clearInterval(updateInterval);
+            if (refreshInterval) clearInterval(refreshInterval);
+            if (pingInterval) clearInterval(pingInterval);
+            updateInterval = setInterval(update, 1000);
+            refreshInterval = setInterval(async () => { if (isLicensed) { await loadEvents(); update(); } }, 5 * 60 * 1000);
+            pingInterval = setInterval(measurePing, 10000);
+            measurePing();
+            ipcRenderer.invoke('get-online-users').then(count => updateOnlineCountDisplay(count));
+        } else {
+            document.getElementById('license-error').textContent = 'Invalid license key';
+            document.getElementById('activate-btn').textContent = 'Activate';
+            document.getElementById('activate-btn').disabled = false;
+        }
+    });
+    document.getElementById('buy-link').addEventListener('click', (e) => { e.preventDefault(); require('electron').shell.openExternal(BUY_URL); });
+}
+
+async function checkLicense() {
+    const isValid = await ipcRenderer.invoke('check-license');
+    if (isValid) { 
+        isLicensed = true; 
+        mainContent.style.display = 'block'; 
+        loadEvents(); 
+        loadSettings(); 
+        update(); 
+        updateInterval = setInterval(update, 1000); 
+        refreshInterval = setInterval(async () => { if (isLicensed) { await loadEvents(); update(); } }, 5 * 60 * 1000);
+        pingInterval = setInterval(measurePing, 10000);
+        measurePing();
+        ipcRenderer.invoke('get-online-users').then(count => updateOnlineCountDisplay(count));
+    }
+    else { mainContent.style.display = 'none'; showLicenseScreen(); }
+}
+ipcRenderer.on('license-loaded', (event, licenseKey) => { checkLicense(); });
+
+const eventColors = { "Invasion": "#ff4444", "Teddy Bears": "#ff9800", "Olympiad": "#ffd700", "Fortress": "#4caf50", "Forest of Duels": "#2196f3", "Mafia's Hideout": "#9c27b0", "Iron Depot": "#795548", "Boss Subjugation": "#f44336", "Atharas Lair": "#00bcd4", "Valakas Nest": "#ff5722", "Heavenly Tower": "#9c27b0"};
+
+function playSound() {
+    if (!settings.soundAlerts) return;
+    try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = 880; gain.gain.value = 0.3; osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5); osc.stop(ctx.currentTime + 0.5); ctx.resume(); } catch(e) {}
+}
+function showNotification(title, timeLeft, eventStartTime) {
+    if (!settings.notifications) return;
+    const key = `${title}_${eventStartTime.getTime()}`;
+    if (notifiedEvents.has(key)) return;
+    notifiedEvents.add(key);
+    try { const n = new Notification('Aden Tracker', { body: `📢 ${title} starts in ${timeLeft}!`, silent: false }); n.onclick = () => { ipcRenderer.send('focus-window'); }; if (settings.soundAlerts) playSound(); } catch(e) {}
+}
+function getCleanEventName(fullName) { let clean = fullName.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim(); clean = clean.replace(/[''']/g, ''); clean = clean.replace(/[^\w\s]/g, ''); return clean.trim(); }
+function createFilterButtons(events) {
+    const map = new Map(); events.forEach(e => { const cn = getCleanEventName(e.n); if (!map.has(cn)) map.set(cn, e.n); });
+    const types = [...map.keys()];
+    const container = document.getElementById('filterButtons');
+    if (!container) return;
+    container.innerHTML = '<button class="filter-btn" data-filter="all">All</button>';
+    types.forEach(type => {
+        const btn = document.createElement('button'); btn.className = 'filter-btn'; if (settings.activeFilters.includes(type)) btn.classList.add('active'); btn.textContent = type; btn.dataset.filter = type;
+        btn.addEventListener('click', () => { btn.classList.toggle('active'); if (settings.activeFilters.includes(type)) settings.activeFilters = settings.activeFilters.filter(f => f !== type); else settings.activeFilters.push(type); saveSettings(); update(); });
+        container.appendChild(btn);
+    });
+    const allBtn = container.querySelector('[data-filter="all"]');
+    if (allBtn) allBtn.addEventListener('click', () => { document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active')); allBtn.classList.add('active'); settings.activeFilters = []; saveSettings(); update(); });
+}
+async function loadEvents() {
+    if (!isLicensed) return;
+    try { 
+        const res = await fetch(EVENTS_URL + '?t=' + Date.now()); 
+        const data = await res.json(); 
+        eventsList = data.events; 
+        // Ενημέρωση της έκδοσης από το API (σαν badge)
+        if (data.version) {
+            const versionSpan = document.getElementById('versionBadge');
+            if (versionSpan) {
+                versionSpan.innerHTML = `📌 v${data.version}`;
+            }
+        }
+        createFilterButtons(eventsList); 
+    } catch(e) { 
+        console.error(e); 
+        if (eventsList.length === 0) { 
+            eventsList = [ { n: "⚔️ Invasion", t: "15:40", d: 30 }, { n: "⚔️ Invasion", t: "19:40", d: 30 }, { n: "⚔️ Invasion", t: "23:40", d: 30 }, { n: "⚔️ Invasion", t: "03:40", d: 30 }, { n: "🧸 Teddy Bears", t: "13:00", d: 15 }, { n: "🧸 Teddy Bears", t: "00:00", d: 15 }, { n: "🏆 Olympiad", t: "02:00", d: 30 }, { n: "🚩 Fortress", t: "22:00", d: 20 }, { n: "🤺 Forest of Duels", t: "23:30", d: 30 }, { n: "🕵️ Mafia's Hideout", t: "00:00", d: 25 }, { n: "🏗️ Iron Depot", t: "22:00", d: 15 }, { n: "👹 Boss Subjugation", t: "22:20", d: 25 }, { n: "🐉 Atharas Lair", t: "01:00", d: 120, days: [1] }, { n: "🔥 Valakas Nest", t: "22:00", d: 120, days: [0] } ]; 
+            createFilterButtons(eventsList); 
+        } 
+    }
+}
+function formatTime(ms) { 
+    let totalHours = Math.floor(ms / 3600000);
+    let mm = Math.floor((ms % 3600000) / 60000);
+    let ss = Math.floor((ms % 60000) / 1000);
+    
+    if (totalHours >= 24) {
+        let days = Math.floor(totalHours / 24);
+        let hours = totalHours % 24;
+        return `${days} day${days > 1 ? 's' : ''} ${String(hours).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+    }
+    
+    return `${String(totalHours).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+function formatRemaining(ms) { let tot = Math.floor(ms/1000), m = Math.floor(tot/60), s = tot%60; if(m>=60){ let h = Math.floor(m/60); m = m%60; return `${h}h ${m}m`; } return `${m}m ${s}s`; }
+function getServerTime() { return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Athens' })); }
+function update() {
+    if (!isLicensed || eventsList.length === 0) return;
+    const nowAthens = getServerTime(), nowLocal = new Date(), userTz = Intl.DateTimeFormat().resolvedOptions().timeZone, userOff = -nowLocal.getTimezoneOffset()/60;
+    document.getElementById('tz-text').innerHTML = `🕐 ${userTz} (UTC${userOff>=0?'+':''}${userOff}) | Aden`;
+    
+    let processed = eventsList.map(e => {
+        let [h,m] = e.t.split(':').map(Number);
+        let start = new Date(nowAthens); start.setHours(h,m,0,0);
+        if(e.days && Array.isArray(e.days) && e.days.length>0){
+            let cur = start.getDay(), found = -1;
+            for(let d of e.days.sort((a,b)=>a-b)) if(d>=cur){ found=d; break; }
+            let add = found!==-1 ? found-cur : (e.days[0]+7)-cur;
+            if(add===0 && nowAthens>start) add=7;
+            start.setDate(start.getDate()+add);
+        } else { let end = new Date(start.getTime()+e.d*60000); if(nowAthens>end) start.setDate(start.getDate()+1); }
+        let end = new Date(start.getTime()+e.d*60000);
+        let offset = nowLocal - nowAthens;
+        let startL = new Date(start.getTime()+offset), endL = new Date(end.getTime()+offset);
+        let live = (nowLocal>=startL && nowLocal<=endL);
+        let diff = live ? endL-nowLocal : startL-nowLocal;
+        let elapsed = live ? nowLocal-startL : 0;
+        let prog = live ? (elapsed/(e.d*60000))*100 : 0;
+        if(!live && diff<=300000 && diff>0) showNotification(e.n, formatRemaining(diff), start);
+        return {...e, isLive: live, diff, progress: prog };
+    }).sort((a,b)=>a.diff-b.diff);
+    if(settings.activeFilters.length>0) processed = processed.filter(e => settings.activeFilters.includes(getCleanEventName(e.n)));
+    
+    let liveEv = processed.filter(e=>e.isLive);
+    let liveHtml = "";
+    if(liveEv.length > 0) {
+        liveHtml = `<div class="live-events-grid">`;
+        liveEv.forEach(e => { 
+            let rem = 100-e.progress; 
+            liveHtml += `<div class="active-box"><div class="active-title"><span>${e.n}</span><span class="live-badge"><span class="live-dot"></span>LIVE</span></div><div class="active-timer">${formatTime(e.diff)}</div><div class="progress-section"><div class="progress-labels"><span>⚡ Started</span><span>${formatRemaining(e.diff)} remaining</span></div><div class="progress-container"><div class="progress-bar" style="width:${rem}%"></div></div></div></div>`; 
+        });
+        liveHtml += `</div>`;
+    } else if(processed[0]) {
+        liveHtml = `<div class="next-event"><div><div class="next-label">⏰ NEXT EVENT</div><div class="next-name">${processed[0].n}</div></div><div class="next-time">${formatTime(processed[0].diff)}</div></div>`;
+    }
+    document.getElementById('active-area').innerHTML = liveHtml;
+    
+    let upHtml = `<div class="section-title"><span>📅 UPCOMING EVENTS</span></div><div class="events-grid">`;
+    processed.filter(e=>!e.isLive).slice(0,20).forEach(e => { let col = eventColors[getCleanEventName(e.n)]||'#ffd700'; upHtml += `<div class="event-item" style="border-left-color:${col}"><span class="event-name">${e.n}</span><span class="event-countdown">${formatTime(e.diff)}</span></div>`; });
+    if(processed.filter(e=>!e.isLive).length===0) upHtml += `<div class="empty-state">✨ No upcoming events</div>`;
+    upHtml += `</div>`;
+    document.getElementById('upcoming-section').innerHTML = upHtml;
+}
+
+function setupListeners() {
+    const nt = document.getElementById('notificationsToggle'), st = document.getElementById('soundToggle'), dt = document.getElementById('darkModeToggle');
+    if(nt) nt.addEventListener('change',(e)=>{settings.notifications=e.target.checked; saveSettings();});
+    if(st) st.addEventListener('change',(e)=>{settings.soundAlerts=e.target.checked; saveSettings();});
+    if(dt) dt.addEventListener('change',(e)=>{settings.darkMode=e.target.checked; saveSettings();});
+}
+
+setupListeners();
+if (Notification.permission === 'default') Notification.requestPermission();
+</script>
+</body>
+</html>
