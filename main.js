@@ -307,43 +307,10 @@ function createMainWindow() {
         autoUpdater.downloadUpdate();
     });
 
-    ipcMain.on('update-ready-restart', () => {
-        console.log('Restarting to install update...');
-        performUpdate();
-    });
-
     ipcMain.on('check-for-updates', () => {
         console.log('Manual check for updates...');
         autoUpdater.checkForUpdatesAndNotify();
     });
-}
-
-// ============ UPDATE FUNCTION ============
-function performUpdate() {
-    console.log('Performing update...');
-    
-    // Αποσύνδεση από Firebase
-    if (userRef) {
-        set(userRef, null).catch(() => {});
-    }
-    
-    // Καθαρισμός interval
-    if (keepAliveInterval) {
-        clearInterval(keepAliveInterval);
-    }
-    
-    // Κλείσιμο όλων των windows
-    if (win && !win.isDestroyed()) {
-        win.destroy();
-    }
-    if (splash && !splash.isDestroyed()) {
-        splash.destroy();
-    }
-    
-    // Force quit μετά από 500ms για να κλείσουν όλα
-    setTimeout(() => {
-        app.exit(0);
-    }, 500);
 }
 
 // ============ AUTO-UPDATER SETUP ============
@@ -369,9 +336,9 @@ autoUpdater.on('update-downloaded', (info) => {
     if (win && !win.isDestroyed()) {
         win.webContents.send('update-ready');
     }
-    // Auto install after 2 seconds
+    // Auto install after 2 seconds - το quitAndInstall() κάνει restart μόνο του
     setTimeout(() => {
-        performUpdate();
+        autoUpdater.quitAndInstall();
     }, 2000);
 });
 
@@ -406,23 +373,11 @@ app.whenReady().then(() => {
     }, 15 * 60 * 1000);
 });
 
-// Force quit όταν κλείνει όλα τα windows
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         if (keepAliveInterval) {
             clearInterval(keepAliveInterval);
         }
-        app.exit(0);
+        app.quit();
     }
-});
-
-// Επιπλέον ασφάλεια: αν μείνει κάτι ανοιχτό, κλείστο
-app.on('will-quit', () => {
-    if (keepAliveInterval) {
-        clearInterval(keepAliveInterval);
-    }
-    if (userRef) {
-        set(userRef, null).catch(() => {});
-    }
-    app.exit(0);
 });
