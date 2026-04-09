@@ -4,8 +4,12 @@ const fs = require('fs');
 const { initializeApp } = require('firebase/app');
 const { getDatabase, ref, set, onDisconnect, onValue } = require('firebase/database');
 const { autoUpdater } = require('electron-updater');
+autoUpdater.currentVersion = app.getVersion();
 
-// Firebase Configuration
+// Fix for electron-updater
+const appVersion = app.getVersion();
+console.log('App version:', appVersion);
+// ============ Firebase Configuration ============
 const firebaseConfig = {
   apiKey: "AIzaSyDVaqfuus1ZBLA_7LSN2ka2gHB6gZR2Wik",
   authDomain: "aden-tracker-fcc98.firebaseapp.com",
@@ -15,7 +19,9 @@ const firebaseConfig = {
   messagingSenderId: "39413049768",
   appId: "1:39413049768:web:28fce937565f9b895c159d"
 };
+// ==============================================
 
+// Αρχικοποίηση Firebase
 const firebaseApp = initializeApp(firebaseConfig);
 const database = getDatabase(firebaseApp);
 
@@ -36,29 +42,43 @@ let currentHeight = 580;
 let userId = null;
 let userRef = null;
 
+// Δημιουργία μοναδικού ID για αυτόν τον χρήστη
 function generateUserId() {
     return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
+// Ενημέρωση online χρηστών
 function updateOnlineUsers() {
     const usersRef = ref(database, 'online_users');
+    
     onValue(usersRef, (snapshot) => {
         const users = snapshot.val();
-        let count = users ? Object.keys(users).length : 0;
+        let count = 0;
+        if (users) {
+            count = Object.keys(users).length;
+        }
+        
         if (win && !win.isDestroyed()) {
             win.webContents.send('update-online-count', count);
         }
     });
 }
 
+// Σύνδεση χρήστη
 function connectUser() {
     userId = generateUserId();
     userRef = ref(database, `online_users/${userId}`);
-    set(userRef, { connected: true, timestamp: Date.now() }).catch(err => console.error('Error connecting user:', err));
+    
+    set(userRef, {
+        connected: true,
+        timestamp: Date.now()
+    }).catch(err => console.error('Error connecting user:', err));
+    
     onDisconnect(userRef).remove();
     updateOnlineUsers();
 }
 
+// License file path
 const licenseFilePath = path.join(app.getPath('userData'), 'license.json');
 let savedLicenseKey = '';
 
@@ -69,7 +89,9 @@ function loadLicense() {
             savedLicenseKey = data.licenseKey || '';
             return savedLicenseKey;
         }
-    } catch (error) { console.error('Failed to load license:', error); }
+    } catch (error) {
+        console.error('Failed to load license:', error);
+    }
     return '';
 }
 
@@ -77,61 +99,127 @@ function saveLicense(licenseKey) {
     try {
         fs.writeFileSync(licenseFilePath, JSON.stringify({ licenseKey }), 'utf8');
         savedLicenseKey = licenseKey;
-    } catch (error) { console.error('Failed to save license:', error); }
+    } catch (error) {
+        console.error('Failed to save license:', error);
+    }
 }
 
 async function verifyLicense(licenseKey) {
     const MASTER_KEY = 'ADEN-TRACKER-MASTER-2024';
-    if (licenseKey === MASTER_KEY) return true;
+    
+    if (licenseKey === MASTER_KEY) {
+        console.log('Master key used - access granted');
+        return true;
+    }
+    
     try {
         const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
-            body: new URLSearchParams({ license_key: licenseKey })
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            },
+            body: new URLSearchParams({
+                license_key: licenseKey
+            })
         });
+        
         const data = await response.json();
         return data.valid === true;
-    } catch (error) { console.error('License verification failed:', error); return false; }
+    } catch (error) {
+        console.error('License verification failed:', error);
+        return false;
+    }
 }
 
+// Δημιουργία Splash Screen
 function createSplashScreen() {
     splash = new BrowserWindow({
-        width: 400, height: 400, frame: false, transparent: false, resizable: false,
-        alwaysOnTop: true, center: true, show: true,
-        webPreferences: { nodeIntegration: false, contextIsolation: false }
+        width: 400,
+        height: 400,
+        frame: false,
+        transparent: false,
+        resizable: false,
+        alwaysOnTop: true,
+        center: true,
+        show: true,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: false
+        }
     });
+    
     splash.loadFile('splash.html');
     splash.setAlwaysOnTop(true);
-    splash.on('closed', () => { splash = null; });
+    
+    splash.on('closed', () => {
+        splash = null;
+    });
 }
 
+// Δημιουργία Κύριου Παραθύρου
 function createMainWindow() {
     const { width } = screen.getPrimaryDisplay().workAreaSize;
+    
     win = new BrowserWindow({
-        width: currentWidth, height: currentHeight, x: width - (currentWidth + 20), y: 20,
-        alwaysOnTop: true, frame: false, transparent: true, resizable: true,
-        minimizable: true, maximizable: false, skipTaskbar: false, show: false,
+        width: currentWidth,
+        height: currentHeight,
+        x: width - (currentWidth + 20),
+        y: 20,
+        alwaysOnTop: true,
+        frame: false,
+        transparent: true,
+        resizable: true,
+        minimizable: true,
+        maximizable: false,
+        skipTaskbar: false,
+        show: false,
         title: 'Aden Tracker',
-        webPreferences: { nodeIntegration: true, contextIsolation: false }
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        }
     });
+
     win.loadFile('index.html');
     win.setIgnoreMouseEvents(false);
     win.setVisibleOnAllWorkspaces(true);
+    
     win.once('ready-to-show', () => {
         setTimeout(() => {
             win.show();
-            if (splash && !splash.isDestroyed()) splash.close();
+            if (splash && !splash.isDestroyed()) {
+                splash.close();
+            }
         }, 1500);
     });
-    win.on('close', () => { if (userRef) set(userRef, null); app.isQuitting = true; app.quit(); });
-    win.on('resize', () => { const [width, height] = win.getSize(); currentWidth = width; currentHeight = height; });
+
+    win.on('close', (event) => {
+        if (userRef) {
+            set(userRef, null).catch(err => console.error('Error removing user:', err));
+        }
+        app.isQuitting = true;
+        app.quit();
+    });
+    
+    win.on('resize', () => {
+        const [width, height] = win.getSize();
+        currentWidth = width;
+        currentHeight = height;
+    });
+
     win.webContents.on('did-finish-load', () => {
         const savedLicense = loadLicense();
         win.webContents.send('license-loaded', savedLicense);
         connectUser();
     });
 
-    ipcMain.on('start-drag', (event, mouseX, mouseY) => { lastMousePos = { x: mouseX, y: mouseY }; isDragging = true; });
+    // Drag functionality
+    ipcMain.on('start-drag', (event, mouseX, mouseY) => {
+        lastMousePos = { x: mouseX, y: mouseY };
+        isDragging = true;
+    });
+
     ipcMain.on('during-drag', (event, mouseX, mouseY) => {
         if (isDragging) {
             const deltaX = mouseX - lastMousePos.x;
@@ -141,42 +229,110 @@ function createMainWindow() {
             lastMousePos = { x: mouseX, y: mouseY };
         }
     });
-    ipcMain.on('end-drag', () => { isDragging = false; });
-    ipcMain.on('focus-window', () => { if (win) { win.show(); win.focus(); } });
+
+    ipcMain.on('end-drag', () => {
+        isDragging = false;
+    });
+
+    ipcMain.on('focus-window', () => {
+        if (win) {
+            win.show();
+            win.focus();
+        }
+    });
+
     ipcMain.handle('get-online-users', async () => {
         const usersRef = ref(database, 'online_users');
         return new Promise((resolve) => {
-            onValue(usersRef, (snapshot) => { const users = snapshot.val(); resolve(users ? Object.keys(users).length : 0); }, { onlyOnce: true });
+            onValue(usersRef, (snapshot) => {
+                const users = snapshot.val();
+                const count = users ? Object.keys(users).length : 0;
+                resolve(count);
+            }, { onlyOnce: true });
         });
     });
+
     ipcMain.handle('activate-license', async (event, licenseKey) => {
         const isValid = await verifyLicense(licenseKey);
-        if (isValid) saveLicense(licenseKey);
+        if (isValid) {
+            saveLicense(licenseKey);
+        }
         return { success: isValid };
     });
-    ipcMain.handle('check-license', async () => { return savedLicenseKey ? await verifyLicense(savedLicenseKey) : false; });
 
-    // Auto-updater handlers
-    ipcMain.on('start-update-download', () => { autoUpdater.downloadUpdate(); });
-    ipcMain.on('update-ready-restart', () => { autoUpdater.quitAndInstall(); });
+    ipcMain.handle('check-license', async () => {
+        if (savedLicenseKey) {
+            return await verifyLicense(savedLicenseKey);
+        }
+        return false;
+    });
+
+    // ============ AUTO-UPDATER IPC HANDLERS ============
+    ipcMain.on('start-update-download', () => {
+        console.log('Starting update download...');
+        autoUpdater.downloadUpdate();
+    });
+
+    ipcMain.on('update-ready-restart', () => {
+        console.log('Restarting to install update...');
+        autoUpdater.quitAndInstall();
+    });
+
+    ipcMain.on('check-for-updates', () => {
+        console.log('Manual check for updates...');
+        autoUpdater.checkForUpdatesAndNotify();
+    });
 }
 
-autoUpdater.autoDownload = false;
+// ============ AUTO-UPDATER SETUP ============
+autoUpdater.autoDownload = true;
 
 autoUpdater.on('update-available', (info) => {
-    if (win && !win.isDestroyed()) win.webContents.send('update-available', info.version);
-});
-autoUpdater.on('download-progress', (progressObj) => {
-    if (win && !win.isDestroyed()) win.webContents.send('update-download-progress', Math.floor(progressObj.percent));
-});
-autoUpdater.on('update-downloaded', () => {
-    if (win && !win.isDestroyed()) win.webContents.send('update-ready');
+    console.log('Update available:', info.version);
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('update-available', info.version);
+    }
 });
 
+autoUpdater.on('download-progress', (progressObj) => {
+    let percent = Math.floor(progressObj.percent);
+    console.log(`Downloading... ${percent}%`);
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('update-download-progress', percent);
+    }
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+    console.log('Update downloaded, ready to install');
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('update-ready');
+    }
+});
+
+autoUpdater.on('error', (err) => {
+    console.error('Update error:', err);
+});
+
+autoUpdater.setFeedURL({
+    provider: 'github',
+    owner: 'markout131-code',
+    repo: 'aden-tracker'
+});
+
+// ============ APP READY ============
 app.whenReady().then(() => {
     createSplashScreen();
     createMainWindow();
-    setTimeout(() => autoUpdater.checkForUpdatesAndNotify(), 3000);
+    
+    // Έλεγχος για updates 3 δευτερόλεπτα μετά το launch
+    setTimeout(() => {
+        console.log('Checking for updates on startup...');
+        autoUpdater.checkForUpdatesAndNotify();
+    }, 3000);
 });
 
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
+});

@@ -1,6 +1,6 @@
 {
   "name": "aden-tracker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lineage 2 Event Tracker",
   "main": "main.js",
   "scripts": {
@@ -43,9 +43,15 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Aden Tracker"
     },
+	"publish": {
+  "provider": "github",
+  "owner": "markout131-code",
+  "repo": "aden-tracker",
+  "private": false,
+  "releaseType": "release"
+},
     "portable": {
       "artifactName": "AdenTrackerPortable.exe"
     }
   }
-}
 }
