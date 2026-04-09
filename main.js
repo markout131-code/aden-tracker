@@ -324,6 +324,9 @@ app.whenReady().then(() => {
     createSplashScreen();
     createMainWindow();
     
+    // ΠΡΟΣΘΗΚΗ - Logging για auto updater
+    autoUpdater.logger = console;
+    
     // Έλεγχος για updates 3 δευτερόλεπτα μετά το launch
     setTimeout(() => {
         console.log('Checking for updates on startup...');

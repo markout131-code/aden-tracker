@@ -1,0 +1,4 @@
+provider: github
+owner: markout131-code
+repo: aden-tracker
+releaseType: release
