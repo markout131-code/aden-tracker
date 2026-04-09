@@ -4,12 +4,11 @@ const fs = require('fs');
 const { initializeApp } = require('firebase/app');
 const { getDatabase, ref, set, onDisconnect, onValue } = require('firebase/database');
 const { autoUpdater } = require('electron-updater');
+autoUpdater.currentVersion = app.getVersion();
 
-// Διάβασε την έκδοση από το package.json για το splash
-const packageJson = require('./package.json');
-const appVersion = packageJson.version;
+// Fix for electron-updater
+const appVersion = app.getVersion();
 console.log('App version:', appVersion);
-
 // ============ Firebase Configuration ============
 const firebaseConfig = {
   apiKey: "AIzaSyDVaqfuus1ZBLA_7LSN2ka2gHB6gZR2Wik",
@@ -173,11 +172,7 @@ function createSplashScreen() {
         }
     });
     
-    // Φόρτωσε το splash.html με την έκδοση ως query parameter
-    splash.loadFile('splash.html', {
-        query: { version: appVersion }
-    });
-    
+    splash.loadFile('splash.html');
     splash.setAlwaysOnTop(true);
     
     splash.on('closed', () => {
@@ -229,6 +224,8 @@ function createMainWindow() {
         if (keepAliveInterval) {
             clearInterval(keepAliveInterval);
         }
+        app.isQuitting = true;
+        app.quit();
     });
     
     win.on('resize', () => {
@@ -307,6 +304,11 @@ function createMainWindow() {
         autoUpdater.downloadUpdate();
     });
 
+    ipcMain.on('update-ready-restart', () => {
+        console.log('Restarting to install update...');
+        autoUpdater.quitAndInstall();
+    });
+
     ipcMain.on('check-for-updates', () => {
         console.log('Manual check for updates...');
         autoUpdater.checkForUpdatesAndNotify();
@@ -314,7 +316,7 @@ function createMainWindow() {
 }
 
 // ============ AUTO-UPDATER SETUP ============
-autoUpdater.autoDownload = true;
+autoUpdater.autoDownload = false;
 
 autoUpdater.on('update-available', (info) => {
     console.log('Update available:', info.version);
@@ -336,10 +338,6 @@ autoUpdater.on('update-downloaded', (info) => {
     if (win && !win.isDestroyed()) {
         win.webContents.send('update-ready');
     }
-    // Auto install after 2 seconds - το quitAndInstall() κάνει restart μόνο του
-    setTimeout(() => {
-        autoUpdater.quitAndInstall();
-    }, 2000);
 });
 
 autoUpdater.on('error', (err) => {
@@ -365,12 +363,6 @@ app.whenReady().then(() => {
         console.log('Checking for updates on startup...');
         autoUpdater.checkForUpdatesAndNotify();
     }, 3000);
-    
-    // Periodic check κάθε 15 λεπτά
-    setInterval(() => {
-        console.log('Periodic check for updates...');
-        autoUpdater.checkForUpdatesAndNotify();
-    }, 15 * 60 * 1000);
 });
 
 app.on('window-all-closed', () => {
