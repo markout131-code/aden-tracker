@@ -132,7 +132,7 @@
         <div class="progress-bar">
             <div class="progress-fill"></div>
         </div>
-        <div class="version" id="appVersion">v1.0.9</div>
+        <div class="version" id="appVersion">v1.1.0</div>
     </div>
     
     <script>
@@ -148,7 +148,6 @@
         const urlParams = new URLSearchParams(window.location.search);
         const version = urlParams.get('version');
         
-        // Αν υπάρχει version στο URL, ενημέρωσε το version element
         if (version) {
             const versionElement = document.getElementById('appVersion');
             if (versionElement) {

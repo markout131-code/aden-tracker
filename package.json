@@ -1,6 +1,6 @@
 {
   "name": "aden-tracker",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Lineage 2 Event Tracker",
   "main": "main.js",
   "scripts": {
@@ -25,31 +25,24 @@
       "output": "dist"
     },
     "publish": {
-  "provider": "github",
-  "owner": "markout131-code",
-  "repo": "aden-tracker",
-  "private": false,
-  "releaseType": "release"
-},
+      "provider": "github",
+      "owner": "markout131-code",
+      "repo": "aden-tracker",
+      "private": false,
+      "releaseType": "release"
+    },
     "win": {
       "target": ["nsis", "portable"],
       "icon": "icon.ico",
       "publish": ["github"]
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Aden Tracker"
+      "createStartMenuShortcut": true
     },
-	"publish": {
-  "provider": "github",
-  "owner": "markout131-code",
-  "repo": "aden-tracker",
-  "private": false,
-  "releaseType": "release"
-},
     "portable": {
       "artifactName": "AdenTrackerPortable.exe"
     }

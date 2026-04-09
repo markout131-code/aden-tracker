@@ -215,62 +215,68 @@
         .license-close:hover { background: rgba(255,215,0,0.4); color: #ffd700; }
 
         /* UPDATE POPUP STYLES */
-#updatePopup {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
-    border: 1px solid #ffd700;
-    border-radius: 12px;
-    padding: 12px 16px;
-    z-index: 2000;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    min-width: 260px;
-    color: #ffffff;
-}
-
-#updatePopup span {
-    color: #ffd700;
-}
-
-body.light-mode #updatePopup {
-    background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
-    border: 1px solid #4a4aff;
-    color: #000000;
-}
-
-body.light-mode #updatePopup span {
-    color: #000000;
-}
-
-body.light-mode #updatePopup button {
-    background: #4a4aff;
-    color: white;
-}
-
-#updatePopup button {
-    margin-top: 10px;
-    width: 100%;
-    padding: 6px;
-    background: #ffd700;
-    border: none;
-    border-radius: 6px;
-    font-weight: bold;
-    cursor: pointer;
-    color: #000;
-}
-
-#downloadBar {
-    width: 0%;
-    height: 100%;
-    background: linear-gradient(90deg, #ffd700, #ff6b35);
-    transition: width 0.3s;
-}
-
-body.light-mode #downloadBar {
-    background: linear-gradient(90deg, #4a4aff, #8a2be2);
-}
+        #updatePopup {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+            border: 1px solid #ffd700;
+            border-radius: 12px;
+            padding: 12px 16px;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            min-width: 260px;
+            color: #ffffff;
+        }
+        
+        #updatePopup span {
+            color: #ffd700;
+        }
+        
+        body.light-mode #updatePopup {
+            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+            border: 1px solid #4a4aff;
+            color: #000000;
+        }
+        
+        body.light-mode #updatePopup span {
+            color: #000000;
+        }
+        
+        body.light-mode #updatePopup button {
+            background: #4a4aff;
+            color: white;
+        }
+        
+        #updatePopup button {
+            margin-top: 10px;
+            width: 100%;
+            padding: 6px;
+            background: #ffd700;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #000;
+        }
+        
+        #downloadBar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ff6b35);
+            transition: width 0.3s;
+        }
+        
+        body.light-mode #downloadBar {
+            background: linear-gradient(90deg, #4a4aff, #8a2be2);
+        }
+        
+        .update-status-text {
+            font-size: 11px;
+            margin-top: 8px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -312,13 +318,14 @@ body.light-mode #downloadBar {
 <div id="updatePopup" style="display:none;">
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
         <span style="font-size:20px;">🔄</span>
-        <span style="font-weight:bold; color:#ffd700;">Update Available v<span id="newVersion"></span></span>
+        <span style="font-weight:bold;">Update Available v<span id="newVersion"></span></span>
     </div>
-    <div style="font-size:11px; color:#ccc; margin-bottom:10px;">Downloading... <span id="downloadPercent">0</span>%</div>
-    <div style="width:100%; height:3px; background:#333; border-radius:4px; overflow:hidden;">
+    <div style="font-size:11px; margin-bottom:10px;">Downloading... <span id="downloadPercent">0</span>%</div>
+    <div style="width:100%; height:4px; background:#333; border-radius:4px; overflow:hidden;">
         <div id="downloadBar" style="width:0%; height:100%;"></div>
     </div>
-    <button id="updateNowBtn">Update Now</button>
+    <div class="update-status-text" id="updateStatusText"></div>
+    <button id="updateNowBtn" style="display:none;">Update Now</button>
 </div>
 
 <script>
@@ -346,7 +353,6 @@ async function getCurrentVersion() {
     }
 }
 
-// Κάλεσε την έκδοση όταν φορτώνει η σελίδα
 getCurrentVersion().then(version => {
     const versionSpan = document.getElementById('versionBadge');
     if (versionSpan) {
@@ -360,6 +366,7 @@ const newVersionSpan = document.getElementById('newVersion');
 const downloadPercentSpan = document.getElementById('downloadPercent');
 const downloadBar = document.getElementById('downloadBar');
 const updateNowBtn = document.getElementById('updateNowBtn');
+const updateStatusText = document.getElementById('updateStatusText');
 let updateReady = false;
 
 ipcRenderer.on('update-available', (event, version) => {
@@ -368,36 +375,27 @@ ipcRenderer.on('update-available', (event, version) => {
     updatePopup.style.display = 'block';
     downloadPercentSpan.textContent = '0';
     downloadBar.style.width = '0%';
-    updateNowBtn.disabled = false;
-    updateNowBtn.textContent = 'Update Now';
+    updateStatusText.textContent = 'Downloading update...';
+    updateNowBtn.style.display = 'none';
     updateReady = false;
+    // Start download automatically
+    ipcRenderer.send('start-update-download');
 });
 
 ipcRenderer.on('update-download-progress', (event, percent) => {
     downloadPercentSpan.textContent = percent;
     downloadBar.style.width = percent + '%';
     if (percent === 100) {
-        updateNowBtn.disabled = false;
-        updateNowBtn.textContent = 'Restart & Install';
-        updateReady = true;
+        updateStatusText.textContent = 'Update downloaded, installing...';
     }
 });
 
 ipcRenderer.on('update-ready', () => {
-    updateNowBtn.disabled = false;
-    updateNowBtn.textContent = 'Restart & Install';
+    updateStatusText.textContent = 'Update ready! Restarting...';
     updateReady = true;
+    // The main.js will auto-restart after 2 seconds
 });
 
-updateNowBtn.addEventListener('click', () => {
-    if (updateReady) {
-        ipcRenderer.send('update-ready-restart');
-    } else {
-        updateNowBtn.disabled = true;
-        updateNowBtn.textContent = 'Downloading...';
-        ipcRenderer.send('start-update-download');
-    }
-});
 // ==========================================
 
 const settingsBtn = document.getElementById('settingsBtn');
@@ -412,13 +410,15 @@ function loadSettings() {
             settings = { ...settings, ...JSON.parse(saved) }; 
         } catch(e) {} 
     }
-    // ΠΡΟΣΘΗΚΗ: Αν δεν υπάρχει αποθηκευμένο dark mode, βάλε true
+    // Default dark mode for first launch
     if (settings.darkMode === undefined) {
         settings.darkMode = true;
     }
     applySettings();
 }
+
 function saveSettings() { localStorage.setItem('adenTrackerSettings', JSON.stringify(settings)); applySettings(); }
+
 function applySettings() {
     if (document.getElementById('notificationsToggle')) {
         document.getElementById('notificationsToggle').checked = settings.notifications;

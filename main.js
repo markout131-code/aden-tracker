@@ -4,11 +4,12 @@ const fs = require('fs');
 const { initializeApp } = require('firebase/app');
 const { getDatabase, ref, set, onDisconnect, onValue } = require('firebase/database');
 const { autoUpdater } = require('electron-updater');
-autoUpdater.currentVersion = app.getVersion();
 
-// Fix for electron-updater
-const appVersion = app.getVersion();
+// Διάβασε την έκδοση από το package.json για το splash
+const packageJson = require('./package.json');
+const appVersion = packageJson.version;
 console.log('App version:', appVersion);
+
 // ============ Firebase Configuration ============
 const firebaseConfig = {
   apiKey: "AIzaSyDVaqfuus1ZBLA_7LSN2ka2gHB6gZR2Wik",
@@ -149,7 +150,11 @@ function createSplashScreen() {
         }
     });
     
-    splash.loadFile('splash.html');
+    // Φόρτωσε το splash.html με την έκδοση ως query parameter
+    splash.loadFile('splash.html', {
+        query: { version: appVersion }
+    });
+    
     splash.setAlwaysOnTop(true);
     
     splash.on('closed', () => {
@@ -307,6 +312,10 @@ autoUpdater.on('update-downloaded', (info) => {
     if (win && !win.isDestroyed()) {
         win.webContents.send('update-ready');
     }
+    // Auto install after 2 seconds
+    setTimeout(() => {
+        autoUpdater.quitAndInstall();
+    }, 2000);
 });
 
 autoUpdater.on('error', (err) => {
@@ -339,6 +348,7 @@ app.whenReady().then(() => {
         autoUpdater.checkForUpdatesAndNotify();
     }, 15 * 60 * 1000);
 });
+
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
