@@ -82,12 +82,12 @@
         body.light-mode .scrollable-content::-webkit-scrollbar-thumb { background: #4a4aff; }
         
         .bottom-bar { 
-			flex-shrink: 0;
-			background: var(--bg-secondary);
-			border-top: 1px solid var(--border-color);
-			padding: 8px 10px;
-			text-align: center;
-			min-height: 55px;
+            flex-shrink: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 8px 10px;
+            text-align: center;
+            min-height: 55px;
         }
         .bottom-info {
             display: flex;
@@ -123,7 +123,6 @@
             color: #4caf50;
             display: inline-block;
         }
-        /* ΤΟ STYLE ΤΗΣ ΕΚΔΟΣΗΣ ΑΠΟ ΤΟ API (σαν badge) */
         .version-badge-style {
             background: rgba(255,215,0,0.2);
             padding: 2px 8px;
@@ -181,11 +180,7 @@
         .next-event { background: var(--next-event-bg); border-radius: 10px; padding: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--next-event-border); }
         .next-event:hover { background: var(--event-hover); }
         .next-label { font-size: 8px; font-weight: 600; color: var(--next-label-color); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
-
-/* ΜΟΝΟ στο dark mode - η λέξη NEXT EVENT γίνεται λευκή */
-body:not(.light-mode) .next-label { 
-    color: #ffd700 !important;
-}
+        body:not(.light-mode) .next-label { color: #ffd700 !important; }
         .next-name { font-size: 11px; font-weight: 700; color: var(--text-primary); }
         .next-time { font-size: 13px; font-weight: 800; background: linear-gradient(135deg, #ffd700, #ffb347); -webkit-background-clip: text; background-clip: text; color: transparent; }
         body.light-mode .next-time { background: linear-gradient(135deg, #1a1a2e, #4a4aff); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -218,6 +213,49 @@ body:not(.light-mode) .next-label {
         .error-message { color: #ff4444; font-size: 11px; margin-top: 8px; }
         .license-close { position: absolute; top: 12px; right: 12px; width: 24px; height: 24px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 16px; cursor: pointer; transition: all 0.2s; }
         .license-close:hover { background: rgba(255,215,0,0.4); color: #ffd700; }
+
+        /* UPDATE POPUP STYLES */
+        #updatePopup {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+            border: 1px solid #ffd700;
+            border-radius: 12px;
+            padding: 12px 16px;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            min-width: 260px;
+        }
+        body.light-mode #updatePopup {
+            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+            border: 1px solid #4a4aff;
+        }
+        body.light-mode #updatePopup button {
+            background: #4a4aff;
+            color: white;
+        }
+        #updatePopup button {
+            margin-top: 10px;
+            width: 100%;
+            padding: 6px;
+            background: #ffd700;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #000;
+        }
+        #downloadBar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ff6b35);
+            transition: width 0.3s;
+        }
+        body.light-mode #downloadBar {
+            background: linear-gradient(90deg, #4a4aff, #8a2be2);
+        }
     </style>
 </head>
 <body>
@@ -242,7 +280,6 @@ body:not(.light-mode) .next-label {
         <div id="upcoming-section"></div>
     </div>
     
-    <!-- ΚΑΤΩ ΜΠΑΡΑ - ΜΙΑ ΦΟΡΑ Η ΕΚΔΟΣΗ (από API) -->
     <div class="bottom-bar">
         <div class="bottom-info">
             <span id="tz-text">🕐 Loading...</span>
@@ -255,6 +292,20 @@ body:not(.light-mode) .next-label {
         </div>
     </div>
 </div>
+
+<!-- UPDATE POPUP -->
+<div id="updatePopup" style="display:none;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+        <span style="font-size:20px;">🔄</span>
+        <span style="font-weight:bold; color:#ffd700;">Update Available v<span id="newVersion"></span></span>
+    </div>
+    <div style="font-size:11px; color:#ccc; margin-bottom:10px;">Downloading... <span id="downloadPercent">0</span>%</div>
+    <div style="width:100%; height:3px; background:#333; border-radius:4px; overflow:hidden;">
+        <div id="downloadBar" style="width:0%; height:100%;"></div>
+    </div>
+    <button id="updateNowBtn">Update Now</button>
+</div>
+
 <script>
 const { ipcRenderer } = require('electron');
 const BUY_URL = 'https://adentracker.lemonsqueezy.com/checkout/buy/1e77753d-1848-45a2-aa3a-4b8278e036fd';
@@ -266,6 +317,73 @@ let settings = { notifications: true, soundAlerts: true, darkMode: false, active
 let eventsList = [];
 let notifiedEvents = new Set();
 let updateInterval = null, refreshInterval = null, pingInterval = null;
+
+// ============ GET VERSION FROM GITHUB ============
+async function getCurrentVersion() {
+    try {
+        const response = await fetch('https://api.github.com/repos/markout131-code/aden-tracker/releases/latest');
+        const data = await response.json();
+        const version = data.tag_name.replace('v', '');
+        return version;
+    } catch (error) {
+        console.error('Failed to get version from GitHub:', error);
+        return '1.0.0';
+    }
+}
+
+// Κάλεσε την έκδοση όταν φορτώνει η σελίδα
+getCurrentVersion().then(version => {
+    const versionSpan = document.getElementById('versionBadge');
+    if (versionSpan) {
+        versionSpan.innerHTML = `📌 v${version}`;
+    }
+});
+
+// ============ UPDATE HANDLING ============
+const updatePopup = document.getElementById('updatePopup');
+const newVersionSpan = document.getElementById('newVersion');
+const downloadPercentSpan = document.getElementById('downloadPercent');
+const downloadBar = document.getElementById('downloadBar');
+const updateNowBtn = document.getElementById('updateNowBtn');
+let updateReady = false;
+
+ipcRenderer.on('update-available', (event, version) => {
+    console.log('Update available:', version);
+    newVersionSpan.textContent = version;
+    updatePopup.style.display = 'block';
+    downloadPercentSpan.textContent = '0';
+    downloadBar.style.width = '0%';
+    updateNowBtn.disabled = false;
+    updateNowBtn.textContent = 'Update Now';
+    updateReady = false;
+});
+
+ipcRenderer.on('update-download-progress', (event, percent) => {
+    downloadPercentSpan.textContent = percent;
+    downloadBar.style.width = percent + '%';
+    if (percent === 100) {
+        updateNowBtn.disabled = false;
+        updateNowBtn.textContent = 'Restart & Install';
+        updateReady = true;
+    }
+});
+
+ipcRenderer.on('update-ready', () => {
+    updateNowBtn.disabled = false;
+    updateNowBtn.textContent = 'Restart & Install';
+    updateReady = true;
+});
+
+updateNowBtn.addEventListener('click', () => {
+    if (updateReady) {
+        ipcRenderer.send('update-ready-restart');
+    } else {
+        updateNowBtn.disabled = true;
+        updateNowBtn.textContent = 'Downloading...';
+        ipcRenderer.send('start-update-download');
+    }
+});
+// ==========================================
 
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsPanel = document.getElementById('settingsPanel');
@@ -288,7 +406,6 @@ function applySettings() {
     else document.body.classList.add('light-mode');
 }
 
-// Measure ping to Google DNS
 async function measurePing() {
     const start = Date.now();
     try {
@@ -327,7 +444,6 @@ function updatePingDisplay(ping) {
     }
 }
 
-// Drag functionality
 let isDragging = false;
 const titleBar = document.querySelector('.title-bar');
 titleBar.addEventListener('mousedown', (e) => {
@@ -342,7 +458,6 @@ window.addEventListener('mouseup', () => { if (isDragging) { isDragging = false;
 closeBtn.addEventListener('click', () => window.close());
 settingsBtn.addEventListener('click', () => { settingsPanel.classList.toggle('show'); });
 
-// Update online count
 function updateOnlineCountDisplay(count) {
     const onlineSpan = document.getElementById('onlineCount');
     if (onlineSpan) {
@@ -444,13 +559,6 @@ async function loadEvents() {
         const res = await fetch(EVENTS_URL + '?t=' + Date.now()); 
         const data = await res.json(); 
         eventsList = data.events; 
-        // Ενημέρωση της έκδοσης από το API (σαν badge)
-        if (data.version) {
-            const versionSpan = document.getElementById('versionBadge');
-            if (versionSpan) {
-                versionSpan.innerHTML = `📌 v${data.version}`;
-            }
-        }
         createFilterButtons(eventsList); 
     } catch(e) { 
         console.error(e); 
