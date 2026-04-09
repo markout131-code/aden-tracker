@@ -41,7 +41,6 @@ let currentWidth = 360;
 let currentHeight = 580;
 let userId = null;
 let userRef = null;
-let keepAliveInterval = null;
 
 // Δημιουργία μοναδικού ID για αυτόν τον χρήστη
 function generateUserId() {
@@ -56,10 +55,7 @@ function updateOnlineUsers() {
         const users = snapshot.val();
         let count = 0;
         if (users) {
-            // Μετράμε μόνο όσους έχουν connected: true
-            Object.values(users).forEach(user => {
-                if (user.connected === true) count++;
-            });
+            count = Object.keys(users).length;
         }
         
         if (win && !win.isDestroyed()) {
@@ -75,29 +71,10 @@ function connectUser() {
     
     set(userRef, {
         connected: true,
-        status: 'online',
         timestamp: Date.now()
     }).catch(err => console.error('Error connecting user:', err));
     
-    // Αντί για remove, βάζουμε 'offline' όταν αποσυνδεθεί
-    onDisconnect(userRef).update({
-        connected: false,
-        status: 'offline',
-        timestamp: Date.now()
-    });
-    
-    // Keep-alive κάθε 25 δευτερόλεπτα
-    if (keepAliveInterval) clearInterval(keepAliveInterval);
-    keepAliveInterval = setInterval(() => {
-        if (userRef) {
-            set(userRef, {
-                connected: true,
-                status: 'online',
-                timestamp: Date.now()
-            }).catch(err => console.error('Keep-alive error:', err));
-        }
-    }, 25000);
-    
+    onDisconnect(userRef).remove();
     updateOnlineUsers();
 }
 
@@ -221,9 +198,6 @@ function createMainWindow() {
         if (userRef) {
             set(userRef, null).catch(err => console.error('Error removing user:', err));
         }
-        if (keepAliveInterval) {
-            clearInterval(keepAliveInterval);
-        }
         app.isQuitting = true;
         app.quit();
     });
@@ -272,12 +246,7 @@ function createMainWindow() {
         return new Promise((resolve) => {
             onValue(usersRef, (snapshot) => {
                 const users = snapshot.val();
-                let count = 0;
-                if (users) {
-                    Object.values(users).forEach(user => {
-                        if (user.connected === true) count++;
-                    });
-                }
+                const count = users ? Object.keys(users).length : 0;
                 resolve(count);
             }, { onlyOnce: true });
         });
@@ -316,7 +285,7 @@ function createMainWindow() {
 }
 
 // ============ AUTO-UPDATER SETUP ============
-autoUpdater.autoDownload = false;
+autoUpdater.autoDownload = true;
 
 autoUpdater.on('update-available', (info) => {
     console.log('Update available:', info.version);
@@ -363,13 +332,15 @@ app.whenReady().then(() => {
         console.log('Checking for updates on startup...');
         autoUpdater.checkForUpdatesAndNotify();
     }, 3000);
+    
+    // Periodic check κάθε 15 λεπτά
+    setInterval(() => {
+        console.log('Periodic check for updates...');
+        autoUpdater.checkForUpdatesAndNotify();
+    }, 15 * 60 * 1000);
 });
-
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
-        if (keepAliveInterval) {
-            clearInterval(keepAliveInterval);
-        }
         app.quit();
     }
 });
