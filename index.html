@@ -214,7 +214,7 @@
         .license-close { position: absolute; top: 12px; right: 12px; width: 24px; height: 24px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 16px; cursor: pointer; transition: all 0.2s; }
         .license-close:hover { background: rgba(255,215,0,0.4); color: #ffd700; }
 
-        /* UPDATE POPUP STYLES */
+        /* UPDATE POPUP STYLES - DARK MODE */
         #updatePopup {
             position: fixed;
             bottom: 20px;
@@ -230,10 +230,7 @@
             color: #ffffff;
         }
         
-        #updatePopup span {
-            color: #ffd700;
-        }
-        
+        /* UPDATE POPUP STYLES - LIGHT MODE (ΟΛΑ ΤΑ ΓΡΑΜΜΑΤΑ ΜΑΥΡΑ) */
         body.light-mode #updatePopup {
             background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
             border: 1px solid #4a4aff;
@@ -244,9 +241,17 @@
             color: #000000;
         }
         
+        body.light-mode #updatePopup div {
+            color: #000000;
+        }
+        
+        body.light-mode #updatePopup .update-status-text {
+            color: #000000;
+        }
+        
         body.light-mode #updatePopup button {
             background: #4a4aff;
-            color: white;
+            color: #ffffff;
         }
         
         #updatePopup button {
@@ -276,6 +281,10 @@
             font-size: 11px;
             margin-top: 8px;
             text-align: center;
+        }
+        
+        body.light-mode .update-status-text {
+            color: #000000;
         }
     </style>
 </head>

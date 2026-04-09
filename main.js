@@ -369,10 +369,10 @@ autoUpdater.on('update-downloaded', (info) => {
     if (win && !win.isDestroyed()) {
         win.webContents.send('update-ready');
     }
-    // Auto install after 1.5 seconds
+    // Auto install after 2 seconds
     setTimeout(() => {
         performUpdate();
-    }, 1500);
+    }, 2000);
 });
 
 autoUpdater.on('error', (err) => {
