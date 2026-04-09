@@ -324,7 +324,7 @@ app.whenReady().then(() => {
     createSplashScreen();
     createMainWindow();
     
-    // ΠΡΟΣΘΗΚΗ - Logging για auto updater
+    // Logging για auto updater
     autoUpdater.logger = console;
     
     // Έλεγχος για updates 3 δευτερόλεπτα μετά το launch
@@ -332,8 +332,13 @@ app.whenReady().then(() => {
         console.log('Checking for updates on startup...');
         autoUpdater.checkForUpdatesAndNotify();
     }, 3000);
+    
+    // Periodic check κάθε 15 λεπτά
+    setInterval(() => {
+        console.log('Periodic check for updates...');
+        autoUpdater.checkForUpdatesAndNotify();
+    }, 15 * 60 * 1000);
 });
-
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
