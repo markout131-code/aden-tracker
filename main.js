@@ -42,6 +42,7 @@ let currentWidth = 360;
 let currentHeight = 580;
 let userId = null;
 let userRef = null;
+let keepAliveInterval = null;
 
 // Δημιουργία μοναδικού ID για αυτόν τον χρήστη
 function generateUserId() {
@@ -56,7 +57,10 @@ function updateOnlineUsers() {
         const users = snapshot.val();
         let count = 0;
         if (users) {
-            count = Object.keys(users).length;
+            // Μετράμε μόνο όσους έχουν connected: true
+            Object.values(users).forEach(user => {
+                if (user.connected === true) count++;
+            });
         }
         
         if (win && !win.isDestroyed()) {
@@ -72,10 +76,29 @@ function connectUser() {
     
     set(userRef, {
         connected: true,
+        status: 'online',
         timestamp: Date.now()
     }).catch(err => console.error('Error connecting user:', err));
     
-    onDisconnect(userRef).remove();
+    // Αντί για remove, βάζουμε 'offline' όταν αποσυνδεθεί
+    onDisconnect(userRef).update({
+        connected: false,
+        status: 'offline',
+        timestamp: Date.now()
+    });
+    
+    // Keep-alive κάθε 25 δευτερόλεπτα
+    if (keepAliveInterval) clearInterval(keepAliveInterval);
+    keepAliveInterval = setInterval(() => {
+        if (userRef) {
+            set(userRef, {
+                connected: true,
+                status: 'online',
+                timestamp: Date.now()
+            }).catch(err => console.error('Keep-alive error:', err));
+        }
+    }, 25000);
+    
     updateOnlineUsers();
 }
 
@@ -203,8 +226,9 @@ function createMainWindow() {
         if (userRef) {
             set(userRef, null).catch(err => console.error('Error removing user:', err));
         }
-        app.isQuitting = true;
-        app.quit();
+        if (keepAliveInterval) {
+            clearInterval(keepAliveInterval);
+        }
     });
     
     win.on('resize', () => {
@@ -251,7 +275,12 @@ function createMainWindow() {
         return new Promise((resolve) => {
             onValue(usersRef, (snapshot) => {
                 const users = snapshot.val();
-                const count = users ? Object.keys(users).length : 0;
+                let count = 0;
+                if (users) {
+                    Object.values(users).forEach(user => {
+                        if (user.connected === true) count++;
+                    });
+                }
                 resolve(count);
             }, { onlyOnce: true });
         });
@@ -280,13 +309,41 @@ function createMainWindow() {
 
     ipcMain.on('update-ready-restart', () => {
         console.log('Restarting to install update...');
-        autoUpdater.quitAndInstall();
+        performUpdate();
     });
 
     ipcMain.on('check-for-updates', () => {
         console.log('Manual check for updates...');
         autoUpdater.checkForUpdatesAndNotify();
     });
+}
+
+// ============ UPDATE FUNCTION ============
+function performUpdate() {
+    console.log('Performing update...');
+    
+    // Αποσύνδεση από Firebase
+    if (userRef) {
+        set(userRef, null).catch(() => {});
+    }
+    
+    // Καθαρισμός interval
+    if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+    }
+    
+    // Κλείσιμο όλων των windows
+    if (win && !win.isDestroyed()) {
+        win.destroy();
+    }
+    if (splash && !splash.isDestroyed()) {
+        splash.destroy();
+    }
+    
+    // Force quit μετά από 500ms για να κλείσουν όλα
+    setTimeout(() => {
+        app.exit(0);
+    }, 500);
 }
 
 // ============ AUTO-UPDATER SETUP ============
@@ -312,10 +369,10 @@ autoUpdater.on('update-downloaded', (info) => {
     if (win && !win.isDestroyed()) {
         win.webContents.send('update-ready');
     }
-    // Auto install after 2 seconds
+    // Auto install after 1.5 seconds
     setTimeout(() => {
-        autoUpdater.quitAndInstall();
-    }, 2000);
+        performUpdate();
+    }, 1500);
 });
 
 autoUpdater.on('error', (err) => {
@@ -349,8 +406,23 @@ app.whenReady().then(() => {
     }, 15 * 60 * 1000);
 });
 
+// Force quit όταν κλείνει όλα τα windows
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
-        app.quit();
+        if (keepAliveInterval) {
+            clearInterval(keepAliveInterval);
+        }
+        app.exit(0);
     }
+});
+
+// Επιπλέον ασφάλεια: αν μείνει κάτι ανοιχτό, κλείστο
+app.on('will-quit', () => {
+    if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+    }
+    if (userRef) {
+        set(userRef, null).catch(() => {});
+    }
+    app.exit(0);
 });
