@@ -27,7 +27,7 @@ let lastMousePos = { x: 0, y: 0 }, isDragging = false;
 let currentWidth = 360, currentHeight = 600;
 let userId = null, userRef = null;
 let isMini = false;
-const MINI_HEIGHT = 90; // height when mini mode: shows only tbar + next event + bbar
+const MINI_HEIGHT = 90;
 
 function generateUserId() {
     return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -51,17 +51,22 @@ function connectUser() {
 
 // License
 const licenseFilePath = path.join(app.getPath('userData'), 'license.json');
+const instanceFilePath = path.join(app.getPath('userData'), 'instance.json');
 let savedLicenseKey = '';
+let savedInstanceId = '';
 
 function loadLicense() {
     try {
         if (fs.existsSync(licenseFilePath)) {
             const data = JSON.parse(fs.readFileSync(licenseFilePath, 'utf8'));
             savedLicenseKey = data.licenseKey || '';
-            return savedLicenseKey;
+        }
+        if (fs.existsSync(instanceFilePath)) {
+            const data = JSON.parse(fs.readFileSync(instanceFilePath, 'utf8'));
+            savedInstanceId = data.instanceId || '';
         }
     } catch (e) { console.error('License load failed:', e); }
-    return '';
+    return savedLicenseKey;
 }
 
 function saveLicense(licenseKey) {
@@ -71,8 +76,15 @@ function saveLicense(licenseKey) {
     } catch (e) { console.error('License save failed:', e); }
 }
 
+function saveInstanceId(instanceId) {
+    try {
+        fs.writeFileSync(instanceFilePath, JSON.stringify({ instanceId }), 'utf8');
+        savedInstanceId = instanceId;
+    } catch (e) { console.error('Instance save failed:', e); }
+}
+
 async function verifyLicense(licenseKey) {
-    if (licenseKey === 'ADEN-TRACKER-MASTER-2023') return true;
+    if (licenseKey === 'ADEN-TRACKER-MASTER-2024') return true;
     try {
         const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
             method: 'POST',
@@ -80,7 +92,13 @@ async function verifyLicense(licenseKey) {
             body: new URLSearchParams({ license_key: licenseKey })
         });
         const data = await response.json();
-        return data.valid === true;
+        const isValid = data.valid === true;
+        
+        if (isValid && data.instance && data.instance.id) {
+            saveInstanceId(data.instance.id);
+        }
+        
+        return isValid;
     } catch (e) {
         console.error('License verification failed:', e);
         return false;
@@ -131,10 +149,12 @@ function createMainWindow() {
         const [w, h] = win.getSize();
         if (!isMini) { currentWidth = w; currentHeight = h; }
     });
+    
     win.on('restore', () => {
         isMini = false;
         win.webContents.send('restore-full-mode');
     });
+    
     win.webContents.on('did-finish-load', () => {
         loadLicense();
         win.webContents.send('license-loaded', savedLicenseKey);
@@ -155,14 +175,14 @@ function createMainWindow() {
     ipcMain.on('end-drag', () => { isDragging = false; });
     ipcMain.on('focus-window', () => { if (win) { win.show(); win.focus(); } });
 
-// Mini mode toggle — minimize window
-ipcMain.on('set-mini-mode', (event, mini) => {
-    if (mini) {
-        win.minimize();
-    } else {
-        win.restore();
-    }
-});
+    // Mini mode toggle — minimize window
+    ipcMain.on('set-mini-mode', (event, mini) => {
+        if (mini) {
+            win.minimize();
+        } else {
+            win.restore();
+        }
+    });
 
     ipcMain.handle('get-online-users', async () => {
         return new Promise((resolve) => {
@@ -175,13 +195,47 @@ ipcMain.on('set-mini-mode', (event, mini) => {
 
     ipcMain.handle('activate-license', async (event, licenseKey) => {
         const isValid = await verifyLicense(licenseKey);
-        if (isValid) saveLicense(licenseKey);
+        if (isValid) {
+            saveLicense(licenseKey);
+        }
         return { success: isValid };
     });
 
     ipcMain.handle('check-license', async () => {
         if (savedLicenseKey) return await verifyLicense(savedLicenseKey);
         return false;
+    });
+
+    // Deactivate license
+    ipcMain.handle('deactivate-license', async () => {
+        if (!savedLicenseKey) {
+            return { success: false, error: 'No license key found' };
+        }
+        
+        try {
+            const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/deactivate', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    license_key: savedLicenseKey,
+                    instance_id: savedInstanceId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success || data.deactivated) {
+                // Delete local license and instance files
+                saveLicense('');
+                saveInstanceId('');
+                return { success: true };
+            } else {
+                return { success: false, error: data.message || 'API returned error' };
+            }
+        } catch (error) {
+            console.error('Deactivation error:', error);
+            return { success: false, error: error.message };
+        }
     });
 
     // Auto-updater IPC
