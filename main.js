@@ -27,6 +27,7 @@ let lastMousePos = { x: 0, y: 0 }, isDragging = false;
 let currentWidth = 360, currentHeight = 600;
 let userId = null, userRef = null;
 let isMini = false;
+const MINI_HEIGHT = 90; // height when mini mode: shows only tbar + next event + bbar
 
 function generateUserId() {
     return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -71,7 +72,7 @@ function saveLicense(licenseKey) {
 }
 
 async function verifyLicense(licenseKey) {
-    if (licenseKey === 'ADEN-TRACKER-MASTER-2024') return true;
+    if (licenseKey === 'ADEN-TRACKER-MASTER-2023') return true;
     try {
         const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
             method: 'POST',
@@ -151,12 +152,17 @@ function createMainWindow() {
     ipcMain.on('end-drag', () => { isDragging = false; });
     ipcMain.on('focus-window', () => { if (win) { win.show(); win.focus(); } });
 
-    // Mini mode toggle — minimize window
-    ipcMain.on('set-mini-mode', (event, mini) => {
+    // Mini mode toggle — accepts dynamic height from renderer
+    ipcMain.on('set-mini-mode', (event, mini, dynamicHeight) => {
+        isMini = mini;
         if (mini) {
-            win.minimize();
+            const h = dynamicHeight || 120;
+            win.setResizable(false);
+            win.setSize(currentWidth, h);
         } else {
-            win.restore();
+            win.setSize(currentWidth, currentHeight);
+            win.setResizable(true);
+            win.webContents.send('restore-full-mode');
         }
     });
 
