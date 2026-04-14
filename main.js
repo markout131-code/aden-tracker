@@ -26,6 +26,8 @@ let win = null, splash = null;
 let lastMousePos = { x: 0, y: 0 }, isDragging = false;
 let currentWidth = 360, currentHeight = 600;
 let userId = null, userRef = null;
+let isMini = false;
+const MINI_HEIGHT = 90; // height when mini mode: shows only tbar + next event + bbar
 
 function generateUserId() {
     return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -47,6 +49,7 @@ function connectUser() {
     updateOnlineUsers();
 }
 
+// License
 const licenseFilePath = path.join(app.getPath('userData'), 'license.json');
 let savedLicenseKey = '';
 
@@ -86,7 +89,7 @@ async function verifyLicense(licenseKey) {
 
 function createSplashScreen() {
     splash = new BrowserWindow({
-        width: 400, height: 400, frame: false, transparent: false,
+        width: 420, height: 420, frame: false, transparent: false,
         resizable: false, alwaysOnTop: true, center: true, show: true,
         webPreferences: { nodeIntegration: false, contextIsolation: false }
     });
@@ -103,6 +106,7 @@ function createMainWindow() {
         alwaysOnTop: true, frame: false, transparent: true,
         resizable: true, minimizable: true, maximizable: false,
         skipTaskbar: false, show: false, title: 'Aden Tracker',
+        minWidth: 300, minHeight: 80,
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
 
@@ -114,7 +118,7 @@ function createMainWindow() {
         setTimeout(() => {
             win.show();
             if (splash && !splash.isDestroyed()) splash.close();
-        }, 1500);
+        }, 1800);
     });
 
     win.on('close', () => {
@@ -125,16 +129,19 @@ function createMainWindow() {
 
     win.on('resize', () => {
         const [w, h] = win.getSize();
-        currentWidth = w; currentHeight = h;
+        if (!isMini) { currentWidth = w; currentHeight = h; }
     });
-
+    win.on('restore', () => {
+        isMini = false;
+        win.webContents.send('restore-full-mode');
+    });
     win.webContents.on('did-finish-load', () => {
         loadLicense();
         win.webContents.send('license-loaded', savedLicenseKey);
         connectUser();
     });
 
-    // Drag handlers
+    // Drag
     ipcMain.on('start-drag', (event, mouseX, mouseY) => {
         lastMousePos = { x: mouseX, y: mouseY }; isDragging = true;
     });
@@ -147,6 +154,15 @@ function createMainWindow() {
     });
     ipcMain.on('end-drag', () => { isDragging = false; });
     ipcMain.on('focus-window', () => { if (win) { win.show(); win.focus(); } });
+
+// Mini mode toggle — minimize window
+ipcMain.on('set-mini-mode', (event, mini) => {
+    if (mini) {
+        win.minimize();
+    } else {
+        win.restore();
+    }
+});
 
     ipcMain.handle('get-online-users', async () => {
         return new Promise((resolve) => {
@@ -168,62 +184,38 @@ function createMainWindow() {
         return false;
     });
 
-    // ============ AUTO-UPDATER HANDLERS ============
+    // Auto-updater IPC
     ipcMain.on('start-update-download', () => {
-        console.log('Starting update download...');
         autoUpdater.downloadUpdate();
     });
-
     ipcMain.on('update-ready-restart', () => {
-        console.log('Restarting to install update...');
         autoUpdater.quitAndInstall();
     });
-
     ipcMain.on('check-for-updates', () => {
-        console.log('Manual check for updates...');
         autoUpdater.checkForUpdatesAndNotify();
     });
 }
 
-// ============ AUTO-UPDATER SETUP ============
+// Auto-updater config
 autoUpdater.autoDownload = false;
 
 autoUpdater.on('update-available', (info) => {
-    console.log('Update available:', info.version);
-    if (win && !win.isDestroyed()) {
-        win.webContents.send('update-available', info.version);
-    }
+    if (win && !win.isDestroyed()) win.webContents.send('update-available', info.version);
 });
-
-autoUpdater.on('download-progress', (progressObj) => {
-    let percent = Math.floor(progressObj.percent);
-    console.log(`Downloading... ${percent}%`);
-    if (win && !win.isDestroyed()) {
-        win.webContents.send('update-download-progress', percent);
-    }
+autoUpdater.on('download-progress', (prog) => {
+    if (win && !win.isDestroyed()) win.webContents.send('update-download-progress', Math.floor(prog.percent));
 });
-
-autoUpdater.on('update-downloaded', (info) => {
-    console.log('Update downloaded, ready to install');
-    if (win && !win.isDestroyed()) {
-        win.webContents.send('update-ready');
-    }
+autoUpdater.on('update-downloaded', () => {
+    if (win && !win.isDestroyed()) win.webContents.send('update-ready');
 });
+autoUpdater.on('error', (err) => { console.error('Updater error:', err); });
 
-autoUpdater.on('error', (err) => {
-    console.error('Update error:', err);
-});
-
-// ============ APP READY ============
 app.whenReady().then(() => {
     createSplashScreen();
     createMainWindow();
-    
-    // Check for updates 3 seconds after launch
     setTimeout(() => {
-        console.log('Checking for updates on startup...');
         autoUpdater.checkForUpdatesAndNotify();
-    }, 3000);
+    }, 4000);
 });
 
 app.on('window-all-closed', () => {
