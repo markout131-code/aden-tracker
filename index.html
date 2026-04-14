@@ -326,17 +326,17 @@ document.getElementById('closeBtn').addEventListener('click',()=>window.close())
 
 document.getElementById('miniBtn').addEventListener('click',()=>{
   isMini=!isMini;
-  ipcRenderer.send('set-mini-mode', isMini);
+  if(isMini){
+    const activeEl=document.getElementById('activeArea');
+    const activeH=activeEl?activeEl.scrollHeight:60;
+    const neededH=42+30+activeH+18+34;
+    ipcRenderer.send('set-mini-mode',true,Math.min(Math.max(neededH,110),200));
+  }else{
+    ipcRenderer.send('set-mini-mode',false,0);
+  }
   document.getElementById('miniBtn').textContent=isMini?'□':'—';
 });
-ipcRenderer.on('restore-full-mode', () => {
-    console.log('restore-full-mode received'); // Για debugging
-    isMini = false;
-    const miniBtn = document.getElementById('miniBtn');
-    if (miniBtn) {
-        miniBtn.textContent = '—';
-    }
-});
+ipcRenderer.on('restore-full-mode',()=>{isMini=false;document.getElementById('miniBtn').textContent='—';});
 
 document.getElementById('settBtn').addEventListener('click',()=>{
   const panel=document.getElementById('settPanel');

@@ -27,7 +27,6 @@ let lastMousePos = { x: 0, y: 0 }, isDragging = false;
 let currentWidth = 360, currentHeight = 600;
 let userId = null, userRef = null;
 let isMini = false;
-const MINI_HEIGHT = 90;
 
 function generateUserId() {
     return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -51,22 +50,17 @@ function connectUser() {
 
 // License
 const licenseFilePath = path.join(app.getPath('userData'), 'license.json');
-const instanceFilePath = path.join(app.getPath('userData'), 'instance.json');
 let savedLicenseKey = '';
-let savedInstanceId = '';
 
 function loadLicense() {
     try {
         if (fs.existsSync(licenseFilePath)) {
             const data = JSON.parse(fs.readFileSync(licenseFilePath, 'utf8'));
             savedLicenseKey = data.licenseKey || '';
-        }
-        if (fs.existsSync(instanceFilePath)) {
-            const data = JSON.parse(fs.readFileSync(instanceFilePath, 'utf8'));
-            savedInstanceId = data.instanceId || '';
+            return savedLicenseKey;
         }
     } catch (e) { console.error('License load failed:', e); }
-    return savedLicenseKey;
+    return '';
 }
 
 function saveLicense(licenseKey) {
@@ -74,13 +68,6 @@ function saveLicense(licenseKey) {
         fs.writeFileSync(licenseFilePath, JSON.stringify({ licenseKey }), 'utf8');
         savedLicenseKey = licenseKey;
     } catch (e) { console.error('License save failed:', e); }
-}
-
-function saveInstanceId(instanceId) {
-    try {
-        fs.writeFileSync(instanceFilePath, JSON.stringify({ instanceId }), 'utf8');
-        savedInstanceId = instanceId;
-    } catch (e) { console.error('Instance save failed:', e); }
 }
 
 async function verifyLicense(licenseKey) {
@@ -92,13 +79,7 @@ async function verifyLicense(licenseKey) {
             body: new URLSearchParams({ license_key: licenseKey })
         });
         const data = await response.json();
-        const isValid = data.valid === true;
-        
-        if (isValid && data.instance && data.instance.id) {
-            saveInstanceId(data.instance.id);
-        }
-        
-        return isValid;
+        return data.valid === true;
     } catch (e) {
         console.error('License verification failed:', e);
         return false;
@@ -149,12 +130,7 @@ function createMainWindow() {
         const [w, h] = win.getSize();
         if (!isMini) { currentWidth = w; currentHeight = h; }
     });
-    
-    win.on('restore', () => {
-        isMini = false;
-        win.webContents.send('restore-full-mode');
-    });
-    
+
     win.webContents.on('did-finish-load', () => {
         loadLicense();
         win.webContents.send('license-loaded', savedLicenseKey);
@@ -195,47 +171,13 @@ function createMainWindow() {
 
     ipcMain.handle('activate-license', async (event, licenseKey) => {
         const isValid = await verifyLicense(licenseKey);
-        if (isValid) {
-            saveLicense(licenseKey);
-        }
+        if (isValid) saveLicense(licenseKey);
         return { success: isValid };
     });
 
     ipcMain.handle('check-license', async () => {
         if (savedLicenseKey) return await verifyLicense(savedLicenseKey);
         return false;
-    });
-
-    // Deactivate license
-    ipcMain.handle('deactivate-license', async () => {
-        if (!savedLicenseKey) {
-            return { success: false, error: 'No license key found' };
-        }
-        
-        try {
-            const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/deactivate', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    license_key: savedLicenseKey,
-                    instance_id: savedInstanceId
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success || data.deactivated) {
-                // Delete local license and instance files
-                saveLicense('');
-                saveInstanceId('');
-                return { success: true };
-            } else {
-                return { success: false, error: data.message || 'API returned error' };
-            }
-        } catch (error) {
-            console.error('Deactivation error:', error);
-            return { success: false, error: error.message };
-        }
     });
 
     // Auto-updater IPC
