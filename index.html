@@ -252,7 +252,7 @@ body.light .finp:focus{border-color:var(--gold);}
       <span id="tzTxt">🕐 Loading...</span>
       <span class="pbdg" id="pingBdg" style="display:none"><span class="pdot" id="pingDot"></span><span id="pingTxt">--</span></span>
       <span class="obdg" id="onlineCount">👥 0 online</span>
-      <span id="verBdg" class="vbdg">v1.2.0</span>
+      <span id="verBdg" class="vbdg">v1.4.1</span>
     </div>
   </div>
 </div>
@@ -283,101 +283,106 @@ let isMini=false;
 let selectedWkDay=new Date().getDay();
 let updateReady=false;
 
+// ============ UPDATE POPUP & BUTTON (FIXED) ============
 const updatePopup = document.getElementById('updatePopup');
+
 ipcRenderer.on('update-available', (ev, ver) => {
     document.getElementById('newVersion').textContent = ver;
     document.getElementById('downloadPercent').textContent = '0';
     document.getElementById('downloadBar').style.width = '0%';
-    document.getElementById('updateNowBtn').textContent = 'Update Now';
-    document.getElementById('updateNowBtn').disabled = false;
     updateReady = false;
     updatePopup.style.display = 'block';
+    
+    const btn = document.getElementById('updateNowBtn');
+    btn.textContent = 'Update Now';
+    btn.disabled = false;
 });
+
 ipcRenderer.on('update-download-progress', (ev, pct) => {
     document.getElementById('downloadPercent').textContent = pct;
     document.getElementById('downloadBar').style.width = pct + '%';
+    const btn = document.getElementById('updateNowBtn');
     if (pct === 100) {
-        document.getElementById('updateNowBtn').textContent = 'Restart & Install';
+        btn.textContent = 'Restart & Install';
         updateReady = true;
+        btn.disabled = false;  // ← ΠΡΟΣΘΕΣΕ ΑΥΤΗ ΤΗ ΓΡΑΜΜΗ
     }
 });
+
 ipcRenderer.on('update-ready', () => {
-    document.getElementById('updateNowBtn').textContent = 'Restart & Install';
+    const btn = document.getElementById('updateNowBtn');
+    btn.textContent = 'Restart & Install';
     updateReady = true;
+    btn.disabled = false;  // ← ΠΡΟΣΘΕΣΕ ΑΥΤΗ ΤΗ ΓΡΑΜΜΗ
 });
+
+ipcRenderer.on('update-error', (ev, errMsg) => {
+    console.error('Update error:', errMsg);
+    const btn = document.getElementById('updateNowBtn');
+    btn.textContent = 'Error - Retry';
+    btn.disabled = false;
+    setTimeout(() => {
+        if (updatePopup.style.display !== 'none') {
+            btn.textContent = 'Update Now';
+        }
+    }, 3000);
+});
+
+// SINGLE event listener - no clone!
 document.getElementById('updateNowBtn').addEventListener('click', () => {
+    console.log('Button clicked, updateReady =', updateReady);
+    const btn = document.getElementById('updateNowBtn');
+    
     if (updateReady) {
+        console.log('Sending update-ready-restart');
         ipcRenderer.send('update-ready-restart');
     } else {
-        document.getElementById('updateNowBtn').disabled = true;
-        document.getElementById('updateNowBtn').textContent = 'Downloading...';
+        console.log('Sending start-update-download');
+        btn.disabled = true;
+        btn.textContent = 'Downloading...';
         ipcRenderer.send('start-update-download');
     }
 });
 
-let dragging = false;
-document.getElementById('tbar').addEventListener('mousedown', e => {
-    if (e.button === 0 && !e.target.classList.contains('ibtn')) {
-        dragging = true;
-        ipcRenderer.send('start-drag', e.screenX, e.screenY);
-        e.preventDefault();
-    }
+let dragging=false;
+document.getElementById('tbar').addEventListener('mousedown',e=>{
+  if(e.button===0&&!e.target.classList.contains('ibtn')){dragging=true;ipcRenderer.send('start-drag',e.screenX,e.screenY);e.preventDefault();}
 });
-window.addEventListener('mousemove', e => {
-    if (dragging) ipcRenderer.send('during-drag', e.screenX, e.screenY);
-});
-window.addEventListener('mouseup', () => {
-    if (dragging) {
-        dragging = false;
-        ipcRenderer.send('end-drag');
-    }
-});
-document.getElementById('closeBtn').addEventListener('click', () => window.close());
+window.addEventListener('mousemove',e=>{if(dragging)ipcRenderer.send('during-drag',e.screenX,e.screenY);});
+window.addEventListener('mouseup',()=>{if(dragging){dragging=false;ipcRenderer.send('end-drag');}});
+document.getElementById('closeBtn').addEventListener('click',()=>window.close());
 
-document.getElementById('miniBtn').addEventListener('click', () => {
-    isMini = !isMini;
-    ipcRenderer.send('set-mini-mode', isMini);
-    document.getElementById('miniBtn').textContent = isMini ? '□' : '—';
+document.getElementById('miniBtn').addEventListener('click',()=>{
+  isMini=!isMini;
+  if(isMini){
+    const activeEl=document.getElementById('activeArea');
+    const activeH=activeEl?activeEl.scrollHeight:60;
+    const neededH=42+30+activeH+18+34;
+    ipcRenderer.send('set-mini-mode',true,Math.min(Math.max(neededH,110),200));
+  }else{
+    ipcRenderer.send('set-mini-mode',false,0);
+  }
+  document.getElementById('miniBtn').textContent=isMini?'□':'—';
 });
-ipcRenderer.on('restore-full-mode', () => {
-    isMini = false;
-    document.getElementById('miniBtn').textContent = '—';
-});
+ipcRenderer.on('restore-full-mode',()=>{isMini=false;document.getElementById('miniBtn').textContent='—';});
 
-document.getElementById('settBtn').addEventListener('click', () => {
-    const panel = document.getElementById('settPanel');
-    panel.classList.toggle('show');
-    if (panel.classList.contains('show')) {
-        document.getElementById('mainScroll').scrollTop = 0;
-    }
+document.getElementById('settBtn').addEventListener('click',()=>{
+  const panel=document.getElementById('settPanel');
+  panel.classList.toggle('show');
+  if(panel.classList.contains('show')){document.getElementById('mainScroll').scrollTop=0;}
 });
 
-function loadSettings() {
-    const s = localStorage.getItem('atS');
-    if (s) {
-        try {
-            settings = { ...settings, ...JSON.parse(s) };
-        } catch (e) {}
-    }
-    if (!localStorage.getItem('atS')) {
-        settings.dark = true;
-    }
-    applySettings();
+function loadSettings(){
+  const s=localStorage.getItem('atS');
+  if(s){try{settings={...settings,...JSON.parse(s)};}catch(e){}}
+  if(!localStorage.getItem('atS')){settings.dark=true;}
+  applySettings();
 }
-function saveSettings() {
-    localStorage.setItem('atS', JSON.stringify(settings));
-    applySettings();
-}
-function applySettings() {
-    const n = document.getElementById('notifToggle'),
-        s = document.getElementById('soundToggle'),
-        d = document.getElementById('darkToggle');
-    if (n) {
-        n.checked = settings.notif;
-        s.checked = settings.sound;
-        d.checked = !settings.dark;
-    }
-    document.body.classList.toggle('light', !settings.dark);
+function saveSettings(){localStorage.setItem('atS',JSON.stringify(settings));applySettings();}
+function applySettings(){
+  const n=document.getElementById('notifToggle'),s=document.getElementById('soundToggle'),d=document.getElementById('darkToggle');
+  if(n){n.checked=settings.notif;s.checked=settings.sound;d.checked=!settings.dark;}
+  document.body.classList.toggle('light',!settings.dark);
 }
 document.getElementById('notifToggle').addEventListener('change',e=>{settings.notif=e.target.checked;saveSettings();});
 document.getElementById('soundToggle').addEventListener('change',e=>{settings.sound=e.target.checked;saveSettings();});

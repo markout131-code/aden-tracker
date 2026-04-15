@@ -27,7 +27,7 @@ let lastMousePos = { x: 0, y: 0 }, isDragging = false;
 let currentWidth = 360, currentHeight = 600;
 let userId = null, userRef = null;
 let isMini = false;
-const MINI_HEIGHT = 90; // height when mini mode: shows only tbar + next event + bbar
+let isUpdateReady = false;
 
 function generateUserId() {
     return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -49,7 +49,6 @@ function connectUser() {
     updateOnlineUsers();
 }
 
-// License
 const licenseFilePath = path.join(app.getPath('userData'), 'license.json');
 let savedLicenseKey = '';
 
@@ -72,7 +71,7 @@ function saveLicense(licenseKey) {
 }
 
 async function verifyLicense(licenseKey) {
-    if (licenseKey === 'ADEN-TRACKER-MASTER-2023') return true;
+    if (licenseKey === 'ADEN-TRACKER-MASTER-2024') return true;
     try {
         const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
             method: 'POST',
@@ -121,10 +120,12 @@ function createMainWindow() {
         }, 1800);
     });
 
+    // ΔΙΟΡΘΩΣΗ: Δεν καλούμε app.quit() αν το update είναι έτοιμο
     win.on('close', () => {
         if (userRef) set(userRef, null).catch(e => console.error(e));
-        app.isQuitting = true;
-        app.quit();
+        if (!isUpdateReady) {
+            app.quit();
+        }
     });
 
     win.on('resize', () => {
@@ -138,7 +139,6 @@ function createMainWindow() {
         connectUser();
     });
 
-    // Drag
     ipcMain.on('start-drag', (event, mouseX, mouseY) => {
         lastMousePos = { x: mouseX, y: mouseY }; isDragging = true;
     });
@@ -152,7 +152,6 @@ function createMainWindow() {
     ipcMain.on('end-drag', () => { isDragging = false; });
     ipcMain.on('focus-window', () => { if (win) { win.show(); win.focus(); } });
 
-    // Mini mode toggle — accepts dynamic height from renderer
     ipcMain.on('set-mini-mode', (event, mini, dynamicHeight) => {
         isMini = mini;
         if (mini) {
@@ -186,40 +185,67 @@ function createMainWindow() {
         return false;
     });
 
-    // Auto-updater IPC
+    // AUTO-UPDATE με σωστό χειρισμό
     ipcMain.on('start-update-download', () => {
+        console.log('Starting download...');
         autoUpdater.downloadUpdate();
     });
+    
     ipcMain.on('update-ready-restart', () => {
-        autoUpdater.quitAndInstall();
+        console.log('Installing update and restarting...');
+        isUpdateReady = true;
+        if (userRef) set(userRef, null).catch(() => {});
+        if (splash && !splash.isDestroyed()) {
+            splash.close();
+        }
+        if (win && !win.isDestroyed()) {
+            win.close();
+        }
+        setTimeout(() => {
+            autoUpdater.quitAndInstall(false, true);
+        }, 500);
     });
+    
     ipcMain.on('check-for-updates', () => {
         autoUpdater.checkForUpdatesAndNotify();
     });
 }
 
-// Auto-updater config
 autoUpdater.autoDownload = false;
 
 autoUpdater.on('update-available', (info) => {
+    console.log('update-available:', info.version);
     if (win && !win.isDestroyed()) win.webContents.send('update-available', info.version);
 });
+
 autoUpdater.on('download-progress', (prog) => {
+    console.log('download-progress:', prog.percent);
     if (win && !win.isDestroyed()) win.webContents.send('update-download-progress', Math.floor(prog.percent));
 });
-autoUpdater.on('update-downloaded', () => {
-    if (win && !win.isDestroyed()) win.webContents.send('update-ready');
+
+autoUpdater.on('update-downloaded', (info) => {
+    console.log('update-downloaded - ready to install');
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('update-ready');
+    }
 });
-autoUpdater.on('error', (err) => { console.error('Updater error:', err); });
+
+autoUpdater.on('error', (err) => { 
+    console.error('Updater error:', err);
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('update-error', err.message);
+    }
+});
 
 app.whenReady().then(() => {
     createSplashScreen();
     createMainWindow();
     setTimeout(() => {
+        console.log('Checking for updates on startup...');
         autoUpdater.checkForUpdatesAndNotify();
     }, 4000);
 });
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    if (process.platform !== 'darwin' && !isUpdateReady) app.quit();
 });
