@@ -1,12 +1,13 @@
 {
   "name": "aden-tracker",
-  "version": "1.4.2",
+  "version": "1.4.4",
   "description": "Lineage 2 Event Tracker",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
-    "deploy": "electron-builder --win --publish always"
+    "deploy": "electron-builder --win --publish always",
+    "release": "git add . && git commit -m \"Release v\" && git push && git tag v && git push origin v && npm run deploy"
   },
   "author": "",
   "license": "MIT",
@@ -32,9 +33,10 @@
       "releaseType": "release"
     },
     "win": {
-      "target": ["nsis", "portable"],
+      "target": ["nsis"],
       "icon": "icon.ico",
-      "publish": ["github"]
+      "publish": ["github"],
+      "signingHashAlgorithms": ["sha256"]
     },
     "nsis": {
       "oneClick": false,
@@ -42,9 +44,6 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Aden Tracker"
-    },
-    "portable": {
-      "artifactName": "AdenTrackerPortable.exe"
     }
   }
 }

@@ -119,12 +119,7 @@ function createMainWindow() {
             if (splash && !splash.isDestroyed()) splash.close();
         }, 1800);
     });
-ipcMain.on('minimize-window', () => {
-    if (win && !win.isDestroyed()) {
-        win.minimize();
-    }
-});
-    // ΔΙΟΡΘΩΣΗ: Δεν καλούμε app.quit() αν το update είναι έτοιμο
+
     win.on('close', () => {
         if (userRef) set(userRef, null).catch(e => console.error(e));
         if (!isUpdateReady) {
@@ -189,7 +184,6 @@ ipcMain.on('minimize-window', () => {
         return false;
     });
 
-    // AUTO-UPDATE με σωστό χειρισμό
     ipcMain.on('start-update-download', () => {
         console.log('Starting download...');
         autoUpdater.downloadUpdate();
@@ -213,6 +207,11 @@ ipcMain.on('minimize-window', () => {
     ipcMain.on('check-for-updates', () => {
         autoUpdater.checkForUpdatesAndNotify();
     });
+
+    setInterval(() => {
+        console.log('Periodic update check...');
+        autoUpdater.checkForUpdatesAndNotify();
+    }, 600000);
 }
 
 autoUpdater.autoDownload = false;

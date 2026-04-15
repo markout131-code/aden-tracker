@@ -69,15 +69,15 @@ body{background:transparent!important;font-family:'Rajdhani',sans-serif;overflow
 .beta-badge{font-family:'Rajdhani',sans-serif;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;background:linear-gradient(135deg,rgba(212,175,55,0.22),rgba(192,120,58,0.18));color:var(--goldb);border:1px solid var(--goldd);border-radius:5px;padding:1px 5px;}
 body.light .beta-badge{background:linear-gradient(135deg,rgba(139,105,20,0.15),rgba(192,120,58,0.1));color:var(--gold);border-color:var(--goldd);}
 .tbtns{display:flex;gap:5px;}
-.ibtn{width:26px;height:26px;background:transparent;border:1px solid var(--bdr);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:12px;cursor:pointer;transition:all .15s;}
+.ibtn{width:26px;height:26px;background:transparent;border:1px solid var(--bdr);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:12px;cursor:pointer;transition:all .15s;position:relative;}
 .ibtn:hover{background:var(--btnhov);color:var(--gold);border-color:var(--bdr2);}
 .tabs{display:flex;border-bottom:1px solid var(--bdr);flex-shrink:0;background:var(--bg2);}
 .tab{flex:1;padding:7px 4px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--tabnc);background:var(--tabn);border:none;cursor:pointer;font-family:'Cinzel',serif;transition:all .15s;border-right:1px solid var(--bdr);}
 .tab:last-child{border-right:none;}.tab.on{color:var(--tabac);background:var(--taba);}
 .tab.locked{color:var(--lockc);cursor:not-allowed;}
 .scroll{padding:8px;flex:1;overflow-y:auto;min-height:0;}
-.scroll::-webkit-scrollbar{width:3px;}.scroll::-webkit-scrollbar-track{background:transparent;}
-.scroll::-webkit-scrollbar-thumb{background:var(--scrl);border-radius:4px;}
+.scroll::-webkit-scrollbar{width:5px;}.scroll::-webkit-scrollbar-track{background:transparent;}
+.scroll::-webkit-scrollbar-thumb{background:var(--gold);border-radius:10px;}
 .panel{display:none;}.panel.on{display:block;}
 .sett{background:var(--bg2);border-radius:10px;padding:9px;margin-bottom:8px;display:none;border:1px solid var(--bdr);}
 .sett.show{display:block;}
@@ -93,14 +93,15 @@ body.light .adlbl{color:rgba(139,105,20,0.5);}
 .freelimit{background:var(--adbg);border:1px solid var(--adbdr);border-radius:8px;padding:6px 9px;margin-bottom:8px;font-size:12px;color:var(--tx2);text-align:center;font-weight:600;}
 .freelimit b{color:var(--gold);}
 .livegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:7px;margin-bottom:8px;}
-.abox{background:var(--abg);border-radius:10px;padding:9px 10px;position:relative;border:1px solid var(--abdr);overflow:hidden;}
+.abox{background:var(--abg);border-radius:10px;padding:9px 10px;position:relative;border:1px solid var(--abdr);overflow:hidden;transition:all 0.2s ease;}
+.abox:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.2);}
 .abox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--shA),var(--shB),var(--shA));animation:shim 2.5s infinite;}
 @keyframes shim{0%,100%{opacity:.5}50%{opacity:1}}
 .atitle{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:4px;display:flex;align-items:center;gap:5px;}
 .lbadge{display:inline-flex;align-items:center;gap:3px;background:var(--livebg);padding:2px 5px;border-radius:20px;font-size:8px;color:var(--livec);letter-spacing:1px;}
 .ldot{width:5px;height:5px;border-radius:50%;background:var(--livec);animation:blink 1.2s infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.atimer{font-size:30px;font-weight:700;background:var(--tgrad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:1px;}
+.atimer{font-size:36px;font-weight:800;background:var(--tgrad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:1px;}
 .psec{margin-top:5px;}
 .plbls{display:flex;justify-content:space-between;font-size:7px;color:var(--plbl);margin-bottom:2px;font-weight:600;}
 .ptrack{width:100%;height:3px;background:var(--ptk);border-radius:10px;overflow:hidden;}
@@ -108,17 +109,18 @@ body.light .adlbl{color:rgba(139,105,20,0.5);}
 .nbox{background:var(--nbg);border-radius:9px;padding:8px 10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--nbdr);}
 .nlbl{font-size:8px;font-weight:700;color:var(--nlbl);letter-spacing:1px;margin-bottom:2px;}
 .nname{font-size:12px;font-weight:700;color:var(--tx1);}
-.ntime{font-size:18px;font-weight:700;background:var(--tgrad);-webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums;letter-spacing:1px;}
+.ntime{font-size:22px;font-weight:800;background:var(--tgrad);-webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums;letter-spacing:1px;}
 .stl{font-family:'Cinzel',serif;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--stlc);margin:7px 0 5px;display:flex;align-items:center;gap:6px;}
 .stl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--stll),transparent);}
 .elist{display:flex;flex-direction:column;gap:3px;}
-.eitem{background:var(--evbg);padding:7px 10px;border-radius:7px;display:flex;justify-content:space-between;align-items:center;border-left:3px solid;transition:background .15s;}
-.eitem:hover{background:var(--evhov);}
-.ename{font-size:13px;font-weight:700;color:var(--tx1);}
+.eitem{background:var(--evbg);padding:7px 10px;border-radius:7px;display:flex;justify-content:space-between;align-items:center;border-left:3px solid;transition:all 0.2s ease;}
+.eitem:hover{background:var(--evhov);transform:translateX(2px);}
+.ename{font-size:15px;font-weight:700;color:var(--tx1);}
 .etime{font-size:10px;color:var(--tx2);font-weight:500;}
-.ecdn{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;background:var(--cdnbg);padding:2px 8px;border-radius:20px;color:var(--cdnc);letter-spacing:.5px;}
+.ecdn{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;background:var(--cdnbg);padding:3px 10px;border-radius:20px;color:var(--cdnc);letter-spacing:.5px;}
 .empt{text-align:center;padding:14px;color:var(--tx3);font-size:10px;}
-.custcard{background:var(--custbg);border:1px solid var(--custbdr);border-radius:9px;padding:8px 10px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;}
+.custcard{background:var(--custbg);border:1px solid var(--custbdr);border-radius:9px;padding:8px 10px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;transition:all 0.2s ease;}
+.custcard:hover{transform:translateY(-1px);}
 .custname{font-size:11px;font-weight:700;color:var(--custc);}
 .custcdn{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;background:var(--custbg);padding:2px 6px;border-radius:20px;color:var(--custc);}
 .custdel{background:transparent;border:none;color:var(--tx3);cursor:pointer;font-size:14px;padding:0 2px;}
@@ -134,7 +136,7 @@ body.light .adlbl{color:rgba(139,105,20,0.5);}
 .fadd{background:var(--prmbg);color:var(--prmc);border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Rajdhani',sans-serif;}
 .wkgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:8px;align-items:start;}
 .wkday{background:var(--wkbg);border-radius:6px;padding:5px 3px;text-align:center;border:1px solid var(--bdr);cursor:pointer;transition:all .2s;}
-.wkday:hover{border-color:var(--bdr2);}
+.wkday:hover{border-color:var(--bdr2);transform:scaleY(1.02);}
 .wkday.today{border-color:var(--gold);background:rgba(212,175,55,0.08);}
 body.light .wkday.today{background:rgba(139,105,20,0.08);}
 .wkday.selected{border-color:var(--gold);background:var(--wksel);box-shadow:0 0 0 1px var(--wkselb);transform:scaleY(1.04);transform-origin:top;z-index:2;position:relative;}
@@ -193,8 +195,8 @@ body.light .lprem-box{background:linear-gradient(135deg,rgba(139,105,20,0.07),rg
 .locksub{font-size:11px;color:var(--tx2);line-height:1.5;font-weight:500;}
 .lockbtn{background:var(--prmbg);color:var(--prmc);border:none;border-radius:8px;padding:8px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Rajdhani',sans-serif;}
 .exprow{display:flex;justify-content:flex-end;margin-bottom:6px;}
-.expbtn{background:var(--evbg);border:1px solid var(--bdr);border-radius:6px;padding:4px 10px;font-size:9px;font-weight:700;color:var(--tx2);cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:.5px;}
-.expbtn:hover{background:var(--btnhov);color:var(--gold);}
+.expbtn{background:var(--evbg);border:1px solid var(--bdr);border-radius:6px;padding:4px 10px;font-size:9px;font-weight:700;color:var(--tx2);cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:.5px;transition:all 0.2s ease;}
+.expbtn:hover{background:var(--btnhov);color:var(--gold);transform:scale(1.02);}
 #updatePopup{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--gold);border-radius:12px;padding:10px 14px;z-index:2000;backdrop-filter:blur(12px);min-width:230px;}
 #updatePopup .utitle{font-weight:700;color:var(--gold);font-size:12px;margin-bottom:4px;}
 #updatePopup .usub{font-size:10px;color:var(--tx2);margin-bottom:6px;}
@@ -221,7 +223,7 @@ body.light .finp:focus{border-color:var(--gold);}
   <div class="tbar" id="tbar">
     <div class="tname">⚔ Aden Tracker <span class="beta-badge">BETA</span></div>
     <div class="tbtns">
-      <div class="ibtn" id="miniBtn" title="Mini mode">—</div>
+      <div class="ibtn" id="miniBtn" title="Minimize">—</div>
       <div class="ibtn" id="settBtn" title="Settings">⚙</div>
       <div class="ibtn" id="closeBtn" title="Close">✕</div>
     </div>
@@ -252,7 +254,7 @@ body.light .finp:focus{border-color:var(--gold);}
       <span id="tzTxt">🕐 Loading...</span>
       <span class="pbdg" id="pingBdg" style="display:none"><span class="pdot" id="pingDot"></span><span id="pingTxt">--</span></span>
       <span class="obdg" id="onlineCount">👥 0 online</span>
-      <span id="verBdg" class="vbdg">v1.4.2</span>
+      <span id="verBdg" class="vbdg">v1.4.4</span>
     </div>
   </div>
 </div>
@@ -283,6 +285,14 @@ let isMini=false;
 let selectedWkDay=new Date().getDay();
 let updateReady=false;
 
+// Auto version from main
+ipcRenderer.on('app-version', (ev, version) => {
+    const verElement = document.getElementById('verBdg');
+    if (verElement) {
+        verElement.textContent = `v${version}`;
+    }
+});
+
 // ============ UPDATE POPUP & BUTTON (FIXED) ============
 const updatePopup = document.getElementById('updatePopup');
 
@@ -305,7 +315,7 @@ ipcRenderer.on('update-download-progress', (ev, pct) => {
     if (pct === 100) {
         btn.textContent = 'Restart & Install';
         updateReady = true;
-        btn.disabled = false;  // ← ΠΡΟΣΘΕΣΕ ΑΥΤΗ ΤΗ ΓΡΑΜΜΗ
+        btn.disabled = false;
     }
 });
 
@@ -313,7 +323,7 @@ ipcRenderer.on('update-ready', () => {
     const btn = document.getElementById('updateNowBtn');
     btn.textContent = 'Restart & Install';
     updateReady = true;
-    btn.disabled = false;  // ← ΠΡΟΣΘΕΣΕ ΑΥΤΗ ΤΗ ΓΡΑΜΜΗ
+    btn.disabled = false;
 });
 
 ipcRenderer.on('update-error', (ev, errMsg) => {
@@ -717,15 +727,16 @@ function renderWeekly(){
   });
   
   document.getElementById('expBtn').addEventListener('click', () => {
-    const nowA = srvTime();
-    const todayEvs = allEv.filter(e => !e.days || !e.days.length || e.days.includes(nowA.getDay()))
+    // Use selectedWkDay instead of today for copy
+    const dayEvsForCopy = allEv.filter(e => !e.days || !e.days.length || e.days.includes(selectedWkDay))
       .sort((a, b) => {
         const [ah, am] = a.t.split(':').map(Number);
         const [bh, bm] = b.t.split(':').map(Number);
         return ah * 60 + am - (bh * 60 + bm);
       });
-    const lines = ['**⚔️ Aden Tracker — Today\'s Schedule**', ''];
-    todayEvs.forEach(e => lines.push(`• **${e.n}** — ${e.t} server time (${e.d}min)`));
+    const dayName = DAYS_FULL[selectedWkDay];
+    const lines = [`**⚔️ Aden Tracker — ${dayName}'s Schedule**`, ''];
+    dayEvsForCopy.forEach(e => lines.push(`• **${e.n}** — ${e.t} server time (${e.d}min)`));
     lines.push('', '_Aden Tracker · adentracker.lemonsqueezy.com_');
     require('electron').clipboard.writeText(lines.join('\n'));
     const b = document.getElementById('expBtn');
@@ -733,6 +744,7 @@ function renderWeekly(){
     setTimeout(() => b.textContent = '📋 Copy for Discord', 2500);
   });
 }
+
 loadCustom();
 if(Notification.permission==='default')Notification.requestPermission();
 </script>
