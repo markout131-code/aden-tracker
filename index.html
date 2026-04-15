@@ -252,7 +252,7 @@ body.light .finp:focus{border-color:var(--gold);}
       <span id="tzTxt">🕐 Loading...</span>
       <span class="pbdg" id="pingBdg" style="display:none"><span class="pdot" id="pingDot"></span><span id="pingTxt">--</span></span>
       <span class="obdg" id="onlineCount">👥 0 online</span>
-      <span id="verBdg" class="vbdg">v1.4.1</span>
+      <span id="verBdg" class="vbdg">v1.4.2</span>
     </div>
   </div>
 </div>
@@ -352,19 +352,9 @@ window.addEventListener('mousemove',e=>{if(dragging)ipcRenderer.send('during-dra
 window.addEventListener('mouseup',()=>{if(dragging){dragging=false;ipcRenderer.send('end-drag');}});
 document.getElementById('closeBtn').addEventListener('click',()=>window.close());
 
-document.getElementById('miniBtn').addEventListener('click',()=>{
-  isMini=!isMini;
-  if(isMini){
-    const activeEl=document.getElementById('activeArea');
-    const activeH=activeEl?activeEl.scrollHeight:60;
-    const neededH=42+30+activeH+18+34;
-    ipcRenderer.send('set-mini-mode',true,Math.min(Math.max(neededH,110),200));
-  }else{
-    ipcRenderer.send('set-mini-mode',false,0);
-  }
-  document.getElementById('miniBtn').textContent=isMini?'□':'—';
+document.getElementById('miniBtn').addEventListener('click', () => {
+    ipcRenderer.send('minimize-window');
 });
-ipcRenderer.on('restore-full-mode',()=>{isMini=false;document.getElementById('miniBtn').textContent='—';});
 
 document.getElementById('settBtn').addEventListener('click',()=>{
   const panel=document.getElementById('settPanel');
@@ -657,49 +647,92 @@ function saveCustom(){localStorage.setItem('atCust',JSON.stringify(customEvents)
 function loadCustom(){try{const s=localStorage.getItem('atCust');if(s)customEvents=JSON.parse(s);}catch(e){}}
 
 function renderWeekly(){
-  const p=document.getElementById('panel-weekly');
-  const today=new Date().getDay();
-  const allEv=[...events,...customEvents];
-  let html=`<div class="exprow"><button class="expbtn" id="expBtn">📋 Copy for Discord</button></div>`;
-  html+=`<div class="stl"><span>📅 Weekly Schedule</span></div><div class="wkgrid">`;
-  DAYS.forEach((d,i)=>{
-    const cls=(i===today?' today':'')+(i===selectedWkDay?' selected':'');
-    html+=`<div class="wkday${cls}" data-day="${i}"><div class="wkdname">${d}</div>`;
-    allEv.forEach(e=>{
-      const isSpecial=e.days&&e.days.length;
-      if(!isSpecial)html+=`<div class="wkev" title="${cleanName(e.n)} ${e.t}">${e.t}</div>`;
-      else if(e.days.includes(i))html+=`<div class="wkev special" title="${cleanName(e.n)} ${e.t}">${e.t}</div>`;
+  const p = document.getElementById('panel-weekly');
+  const today = new Date().getDay();
+  const allEv = [...events, ...customEvents];
+
+  // For the grid: group events by day properly
+  // Daily events (no days[]) appear on ALL days but we show them compact
+  // Special events only on their specific days
+  const dailyEvs = allEv.filter(e => !e.days || !e.days.length);
+  const specialEvs = allEv.filter(e => e.days && e.days.length);
+
+  let html = `<div class="exprow"><button class="expbtn" id="expBtn">📋 Copy for Discord</button></div>`;
+  html += `<div class="stl"><span>📅 Weekly Schedule</span></div><div class="wkgrid">`;
+  
+  DAYS.forEach((d, i) => {
+    const cls = (i === today ? ' today' : '') + (i === selectedWkDay ? ' selected' : '');
+    const daySpecial = specialEvs.filter(e => e.days.includes(i));
+    html += `<div class="wkday${cls}" data-day="${i}"><div class="wkdname">${d}</div>`;
+    
+    // Show special events for this day first (red)
+    daySpecial.forEach(e => {
+      html += `<div class="wkev special" title="${cleanName(e.n)} ${e.t}">${e.t}</div>`;
     });
-    html+='</div>';
+    
+    // Show count of daily events as a single compact badge instead of listing all
+    if (dailyEvs.length > 0) {
+      const uniqueTimes = [...new Set(dailyEvs.map(e => e.t))].slice(0, 2);
+      uniqueTimes.forEach(t => {
+        html += `<div class="wkev" title="Daily events at ${t}">${t}</div>`;
+      });
+      if ([...new Set(dailyEvs.map(e => e.t))].length > 2) {
+        html += `<div class="wkev" style="color:var(--tx3);background:transparent;border:1px dashed var(--bdr)">+${[...new Set(dailyEvs.map(e => e.t))].length - 2}</div>`;
+      }
+    }
+    html += '</div>';
   });
-  html+='</div>';
-  const dayEvs=allEv.filter(e=>!e.days||!e.days.length||e.days.includes(selectedWkDay)).sort((a,b)=>{const[ah,am]=a.t.split(':').map(Number);const[bh,bm]=b.t.split(':').map(Number);return ah*60+am-(bh*60+bm);});
-  const isToday=selectedWkDay===today;
-  html+=`<div class="daydetail"><div class="daydetail-title">${DAYS_FULL[selectedWkDay]}${isToday?' — Today':''}</div>`;
-  if(!dayEvs.length)html+=`<div class="daydetail-empty">No events this day</div>`;
-  else{
-    html+=`<div class="elist">`;
-    dayEvs.forEach(e=>{
-      const col=ECOLS[cleanName(e.n)]||'#d4af37';
-      html+=`<div class="eitem" style="border-left-color:${col}"><div><span class="ename">${e.n}</span><br><span class="etime">${e.t} server · ${e.d}min</span></div></div>`;
+  html += '</div>';
+
+  // Day detail panel - shows ALL events for selected day
+  const dayEvs = allEv.filter(e => !e.days || !e.days.length || e.days.includes(selectedWkDay))
+    .sort((a, b) => {
+      const [ah, am] = a.t.split(':').map(Number);
+      const [bh, bm] = b.t.split(':').map(Number);
+      return ah * 60 + am - (bh * 60 + bm);
     });
-    html+=`</div>`;
+  const isToday = selectedWkDay === today;
+  html += `<div class="daydetail"><div class="daydetail-title">${DAYS_FULL[selectedWkDay]}${isToday ? ' — Today' : ''}<span style="font-size:9px;color:var(--tx2);font-family:'Rajdhani',sans-serif;font-weight:500;margin-left:6px">${dayEvs.length} events</span></div>`;
+  
+  if (!dayEvs.length) {
+    html += `<div class="daydetail-empty">No events this day</div>`;
+  } else {
+    html += `<div class="elist">`;
+    dayEvs.forEach(e => {
+      const col = ECOLS[cleanName(e.n)] || '#d4af37';
+      const isSpec = e.days && e.days.length;
+      html += `<div class="eitem" style="border-left-color:${col}${isSpec ? ';background:rgba(255,82,82,0.05)' : ''}"><div><span class="ename">${e.n}</span><br><span class="etime">${e.t} server · ${e.d}min${isSpec ? ' · weekly' : ' · daily'}</span></div></div>`;
+    });
+    html += `</div>`;
   }
-  html+=`</div>`;
-  p.innerHTML=html;
-  p.querySelectorAll('.wkday').forEach(cell=>{cell.addEventListener('click',()=>{selectedWkDay=parseInt(cell.dataset.day);renderWeekly();});});
-  document.getElementById('expBtn').addEventListener('click',()=>{
-    const nowA=srvTime();
-    const todayEvs=allEv.filter(e=>!e.days||!e.days.length||e.days.includes(nowA.getDay())).sort((a,b)=>{const[ah,am]=a.t.split(':').map(Number);const[bh,bm]=b.t.split(':').map(Number);return ah*60+am-(bh*60+bm);});
-    const lines=['**⚔️ Aden Tracker — Today\'s Schedule**',''];
-    todayEvs.forEach(e=>lines.push(`• **${e.n}** — ${e.t} server time (${e.d}min)`));
-    lines.push('','_Aden Tracker · adentracker.lemonsqueezy.com_');
+  html += `</div>`;
+  
+  p.innerHTML = html;
+
+  p.querySelectorAll('.wkday').forEach(cell => {
+    cell.addEventListener('click', () => {
+      selectedWkDay = parseInt(cell.dataset.day);
+      renderWeekly();
+    });
+  });
+  
+  document.getElementById('expBtn').addEventListener('click', () => {
+    const nowA = srvTime();
+    const todayEvs = allEv.filter(e => !e.days || !e.days.length || e.days.includes(nowA.getDay()))
+      .sort((a, b) => {
+        const [ah, am] = a.t.split(':').map(Number);
+        const [bh, bm] = b.t.split(':').map(Number);
+        return ah * 60 + am - (bh * 60 + bm);
+      });
+    const lines = ['**⚔️ Aden Tracker — Today\'s Schedule**', ''];
+    todayEvs.forEach(e => lines.push(`• **${e.n}** — ${e.t} server time (${e.d}min)`));
+    lines.push('', '_Aden Tracker · adentracker.lemonsqueezy.com_');
     require('electron').clipboard.writeText(lines.join('\n'));
-    const b=document.getElementById('expBtn');b.textContent='✅ Copied!';
-    setTimeout(()=>b.textContent='📋 Copy for Discord',2500);
+    const b = document.getElementById('expBtn');
+    b.textContent = '✅ Copied!';
+    setTimeout(() => b.textContent = '📋 Copy for Discord', 2500);
   });
 }
-
 loadCustom();
 if(Notification.permission==='default')Notification.requestPermission();
 </script>

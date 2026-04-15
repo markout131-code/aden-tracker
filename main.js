@@ -119,7 +119,11 @@ function createMainWindow() {
             if (splash && !splash.isDestroyed()) splash.close();
         }, 1800);
     });
-
+ipcMain.on('minimize-window', () => {
+    if (win && !win.isDestroyed()) {
+        win.minimize();
+    }
+});
     // ΔΙΟΡΘΩΣΗ: Δεν καλούμε app.quit() αν το update είναι έτοιμο
     win.on('close', () => {
         if (userRef) set(userRef, null).catch(e => console.error(e));
