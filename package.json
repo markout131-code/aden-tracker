@@ -1,6 +1,6 @@
 {
   "name": "aden-tracker",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Lineage 2 Event Tracker",
   "main": "main.js",
   "scripts": {
@@ -32,10 +32,16 @@
       "releaseType": "release"
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "icon.ico",
-      "publish": ["github"],
-      "signingHashAlgorithms": ["sha256"]
+      "publish": [
+        "github"
+      ],
+      "signingHashAlgorithms": [
+        "sha256"
+      ]
     },
     "nsis": {
       "oneClick": false,
