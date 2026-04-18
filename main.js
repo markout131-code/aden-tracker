@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { initializeApp } = require('firebase/app');
@@ -22,7 +22,7 @@ app.setName('Aden Tracker');
 if (process.platform === 'win32') app.setAppUserModelId('com.aden.tracker');
 app.disableHardwareAcceleration();
 
-let win = null, splash = null;
+let win = null, splash = null, tray = null;
 let lastMousePos = { x: 0, y: 0 }, isDragging = false;
 let currentWidth = 360, currentHeight = 600;
 let userId = null, userRef = null;
@@ -86,6 +86,45 @@ async function verifyLicense(licenseKey) {
     }
 }
 
+// ---- SYSTEM TRAY ----
+function createTray() {
+    // Use app icon for tray — fallback to empty if not found
+    let iconPath = path.join(__dirname, 'icon.ico');
+    let trayIcon;
+    if (fs.existsSync(iconPath)) {
+        trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+    } else {
+        trayIcon = nativeImage.createEmpty();
+    }
+
+    tray = new Tray(trayIcon);
+    tray.setToolTip('Aden Tracker');
+
+    const contextMenu = Menu.buildFromTemplate([
+        {
+            label: 'Show Aden Tracker',
+            click: () => {
+                if (win) { win.show(); win.focus(); }
+            }
+        },
+        { type: 'separator' },
+        {
+            label: 'Quit',
+            click: () => {
+                if (userRef) set(userRef, null).catch(() => {});
+                app.quit();
+            }
+        }
+    ]);
+
+    tray.setContextMenu(contextMenu);
+
+    // Click on tray icon = show window
+    tray.on('click', () => {
+        if (win) { win.show(); win.focus(); }
+    });
+}
+
 function createSplashScreen() {
     splash = new BrowserWindow({
         width: 420, height: 420, frame: false, transparent: false,
@@ -106,25 +145,34 @@ function createMainWindow() {
         resizable: true, minimizable: true, maximizable: false,
         skipTaskbar: false, show: false, title: 'Aden Tracker',
         minWidth: 300, minHeight: 80,
+        // FIX: movable must be true so dragging works on first launch
+        movable: true,
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
 
     win.loadFile('index.html');
     win.setIgnoreMouseEvents(false);
     win.setVisibleOnAllWorkspaces(true);
+    // Ensure always movable after creation
+    win.setMovable(true);
 
     win.once('ready-to-show', () => {
         setTimeout(() => {
             win.show();
+            win.setMovable(true);
             if (splash && !splash.isDestroyed()) splash.close();
         }, 1800);
     });
 
-    win.on('close', () => {
-        if (userRef) set(userRef, null).catch(e => console.error(e));
+    win.on('close', (event) => {
         if (!isUpdateReady) {
-            app.quit();
+            // Instead of closing, hide to tray
+            event.preventDefault();
+            win.hide();
+            return;
         }
+        if (userRef) set(userRef, null).catch(e => console.error(e));
+        app.quit();
     });
 
     win.on('resize', () => {
@@ -138,6 +186,7 @@ function createMainWindow() {
         connectUser();
     });
 
+    // Drag
     ipcMain.on('start-drag', (event, mouseX, mouseY) => {
         lastMousePos = { x: mouseX, y: mouseY }; isDragging = true;
     });
@@ -151,13 +200,18 @@ function createMainWindow() {
     ipcMain.on('end-drag', () => { isDragging = false; });
     ipcMain.on('focus-window', () => { if (win) { win.show(); win.focus(); } });
 
+    // Mini mode — send to tray area (hide window, show in tray)
+    ipcMain.on('minimize-to-tray', () => {
+        win.hide();
+    });
+
+    // Keep old set-mini-mode for compatibility
     ipcMain.on('set-mini-mode', (event, mini, dynamicHeight) => {
         isMini = mini;
         if (mini) {
-            const h = dynamicHeight || 120;
-            win.setResizable(false);
-            win.setSize(currentWidth, h);
+            win.hide();
         } else {
+            win.show();
             win.setSize(currentWidth, currentHeight);
             win.setResizable(true);
             win.webContents.send('restore-full-mode');
@@ -188,32 +242,27 @@ function createMainWindow() {
         console.log('Starting download...');
         autoUpdater.downloadUpdate();
     });
-    
+
     ipcMain.on('update-ready-restart', () => {
         console.log('Installing update and restarting...');
         isUpdateReady = true;
         if (userRef) set(userRef, null).catch(() => {});
-        if (splash && !splash.isDestroyed()) {
-            splash.close();
-        }
-        if (win && !win.isDestroyed()) {
-            win.close();
-        }
-        setTimeout(() => {
-            autoUpdater.quitAndInstall(false, true);
-        }, 500);
+        if (splash && !splash.isDestroyed()) splash.close();
+        if (tray) tray.destroy();
+        autoUpdater.quitAndInstall(false, true);
     });
-    
+
     ipcMain.on('check-for-updates', () => {
         autoUpdater.checkForUpdatesAndNotify();
     });
 
+    // Check for updates every 10 minutes
     setInterval(() => {
-        console.log('Periodic update check...');
         autoUpdater.checkForUpdatesAndNotify();
     }, 600000);
 }
 
+// Auto-updater
 autoUpdater.autoDownload = false;
 
 autoUpdater.on('update-available', (info) => {
@@ -222,33 +271,37 @@ autoUpdater.on('update-available', (info) => {
 });
 
 autoUpdater.on('download-progress', (prog) => {
-    console.log('download-progress:', prog.percent);
     if (win && !win.isDestroyed()) win.webContents.send('update-download-progress', Math.floor(prog.percent));
 });
 
-autoUpdater.on('update-downloaded', (info) => {
-    console.log('update-downloaded - ready to install');
-    if (win && !win.isDestroyed()) {
-        win.webContents.send('update-ready');
-    }
+autoUpdater.on('update-downloaded', () => {
+    console.log('update-downloaded');
+    if (win && !win.isDestroyed()) win.webContents.send('update-ready');
 });
 
-autoUpdater.on('error', (err) => { 
+autoUpdater.on('error', (err) => {
     console.error('Updater error:', err);
-    if (win && !win.isDestroyed()) {
-        win.webContents.send('update-error', err.message);
-    }
+    if (win && !win.isDestroyed()) win.webContents.send('update-error', err.message);
 });
 
 app.whenReady().then(() => {
+    createTray();
     createSplashScreen();
     createMainWindow();
     setTimeout(() => {
-        console.log('Checking for updates on startup...');
         autoUpdater.checkForUpdatesAndNotify();
     }, 4000);
 });
 
+// Don't quit when all windows closed — live in tray
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin' && !isUpdateReady) app.quit();
+    if (isUpdateReady && process.platform !== 'darwin') {
+        app.quit();
+    }
+    // Otherwise stay in tray
+});
+
+app.on('before-quit', () => {
+    isUpdateReady = true; // Allow actual quit
+    if (userRef) set(userRef, null).catch(() => {});
 });

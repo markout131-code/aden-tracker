@@ -1,13 +1,12 @@
 {
   "name": "aden-tracker",
-  "version": "1.4.4",
+  "version": "1.5.0",
   "description": "Lineage 2 Event Tracker",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
-    "deploy": "electron-builder --win --publish always",
-    "release": "git add . && git commit -m \"Release v\" && git push && git tag v && git push origin v && npm run deploy"
+    "deploy": "node scripts/release.js"
   },
   "author": "",
   "license": "MIT",
