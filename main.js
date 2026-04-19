@@ -28,6 +28,7 @@ let currentWidth = 360, currentHeight = 600;
 let userId = null, userRef = null;
 let isMini = false;
 let isUpdateReady = false;
+let isQuitting = false; // set to true when user explicitly quits via tray or update
 
 function generateUserId() {
     return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -111,7 +112,10 @@ function createTray() {
         {
             label: 'Quit',
             click: () => {
+                isQuitting = true;
                 if (userRef) set(userRef, null).catch(() => {});
+                if (tray) { tray.destroy(); tray = null; }
+                if (win && !win.isDestroyed()) win.destroy();
                 app.quit();
             }
         }
@@ -165,14 +169,14 @@ function createMainWindow() {
     });
 
     win.on('close', (event) => {
-        if (!isUpdateReady) {
-            // Instead of closing, hide to tray
+        if (!isQuitting && !isUpdateReady) {
+            // Hide to tray instead of closing
             event.preventDefault();
             win.hide();
             return;
         }
+        // Real quit — cleanup
         if (userRef) set(userRef, null).catch(e => console.error(e));
-        app.quit();
     });
 
     win.on('resize', () => {
@@ -246,9 +250,10 @@ function createMainWindow() {
     ipcMain.on('update-ready-restart', () => {
         console.log('Installing update and restarting...');
         isUpdateReady = true;
+        isQuitting = true;
         if (userRef) set(userRef, null).catch(() => {});
         if (splash && !splash.isDestroyed()) splash.close();
-        if (tray) tray.destroy();
+        if (tray) { tray.destroy(); tray = null; }
         autoUpdater.quitAndInstall(false, true);
     });
 
@@ -295,13 +300,14 @@ app.whenReady().then(() => {
 
 // Don't quit when all windows closed — live in tray
 app.on('window-all-closed', () => {
-    if (isUpdateReady && process.platform !== 'darwin') {
+    if ((isQuitting || isUpdateReady) && process.platform !== 'darwin') {
         app.quit();
     }
-    // Otherwise stay in tray
+    // Otherwise stay alive in tray
 });
 
 app.on('before-quit', () => {
-    isUpdateReady = true; // Allow actual quit
+    isQuitting = true;
+    isUpdateReady = true;
     if (userRef) set(userRef, null).catch(() => {});
 });
